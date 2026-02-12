@@ -154,12 +154,18 @@ export function initDashboard(user) {
 
         // Add event listener only once
         if (picker && !picker.dataset.listenerAdded) {
-            picker.addEventListener('emojiSelect', (selection) => {
-                if (targetCategoryId) {
-                    updateCategoryIcon(targetCategoryId, selection.detail.native);
+            const handleSelect = (selection) => {
+                const emoji = selection.detail.native || selection.detail.emoji.native;
+                if (targetCategoryId && emoji) {
+                    updateCategoryIcon(targetCategoryId, emoji);
                     closeEmojiPicker();
                 }
-            });
+            };
+
+            // Supporting multiple possible event names for compatibility
+            picker.addEventListener('emojiSelect', handleSelect);
+            picker.addEventListener('emojiselect', handleSelect);
+
             picker.dataset.listenerAdded = 'true';
         }
 
@@ -181,7 +187,13 @@ export function initDashboard(user) {
             if (cat) {
                 cat.icon = newIcon;
                 localStorage.setItem('user_categories', JSON.stringify(userCategories));
-                renderMonthData(currentYear, currentMonth); // Refresh UI
+
+                // Refresh all UI parts that might show the icon
+                renderMonthData(currentYear, currentMonth);
+                renderYearlyStats();
+                renderRecentTransactions();
+
+                targetCategoryId = null; // Reset
             }
         }
     }
