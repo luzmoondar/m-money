@@ -1079,38 +1079,14 @@ body {
 }
 
 /* Emoji Picker Styles */
+/* Emoji Picker Styles */
 .emoji-modal {
-    max-width: 400px;
+    max-width: 360px;
+    width: 100%;
 }
 
-.emoji-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 10px;
+#emoji-picker-container {
     padding: 10px;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.emoji-item {
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 8px;
-    transition: all 0.2s;
-}
-
-.emoji-item:hover {
-    background-color: var(--bg-main);
-    transform: scale(1.1);
-}
-
-.cat-header .icon {
-    cursor: pointer;
-    transition: transform 0.2s;
 }
 
 .cat-header .icon:hover {

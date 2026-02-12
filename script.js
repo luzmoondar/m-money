@@ -145,30 +145,29 @@ export function initDashboard(user) {
         return card;
     }
 
-    // Emoji Picker Logic
-    const EMOJI_LIST = [
-        '💸', '💰', '🍚', '🏠', '🎸', '💵', '🎁', '📈', '🍔', '🍺',
-        '☕', '🚌', ' taxi', '🎬', '👗', '💊', '🎓', '🛋️', '📱', '🍼',
-        '🐶', '✈️', '🎾', '🚒', '🎁', '🛒', '🛁', '💄', '💇', '💻'
-    ];
-
+    // Emoji Picker Logic using Emoji-Mart
     let targetCategoryId = null;
+    let picker = null;
 
     function openEmojiPicker(catId) {
         targetCategoryId = catId;
-        const emojiListEl = document.getElementById('emoji-list');
-        emojiListEl.innerHTML = '';
+        const container = document.getElementById('emoji-picker-container');
 
-        EMOJI_LIST.forEach(emoji => {
-            const div = document.createElement('div');
-            div.className = 'emoji-item';
-            div.textContent = emoji;
-            div.onclick = () => {
-                updateCategoryIcon(targetCategoryId, emoji);
-                closeEmojiPicker();
-            };
-            emojiListEl.appendChild(div);
-        });
+        // Initialize picker only once
+        if (!picker) {
+            picker = new EmojiMart.Picker({
+                onEmojiSelect: (emoji) => {
+                    if (targetCategoryId) {
+                        updateCategoryIcon(targetCategoryId, emoji.native);
+                        closeEmojiPicker();
+                    }
+                },
+                locale: 'ko',
+                theme: 'light',
+                set: 'native'
+            });
+            container.appendChild(picker);
+        }
 
         document.getElementById('emoji-picker-overlay').classList.add('active');
     }
