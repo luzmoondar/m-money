@@ -145,28 +145,38 @@ export function initDashboard(user) {
         return card;
     }
 
-    // Emoji Picker Logic using Emoji-Mart (v5 Web Component)
+    // Emoji Picker Logic using Emoji-Mart (v5 JS API)
     let targetCategoryId = null;
+    let pickerInstance = null;
 
-    function openEmojiPicker(catId) {
+    async function openEmojiPicker(catId) {
         targetCategoryId = catId;
-        const picker = document.querySelector('em-emoji-picker');
+        const container = document.getElementById('emoji-picker-container');
 
-        // Add event listener only once
-        if (picker && !picker.dataset.listenerAdded) {
-            const handleSelect = (selection) => {
-                const emoji = selection.detail.native || selection.detail.emoji.native;
-                if (targetCategoryId && emoji) {
-                    updateCategoryIcon(targetCategoryId, emoji);
-                    closeEmojiPicker();
-                }
-            };
+        if (!pickerInstance) {
+            // Explicitly fetch data for stability
+            try {
+                const response = await fetch('https://cdn.jsdelivr.net/npm/@emoji-mart/data');
+                const data = await response.json();
 
-            // Supporting multiple possible event names for compatibility
-            picker.addEventListener('emojiSelect', handleSelect);
-            picker.addEventListener('emojiselect', handleSelect);
-
-            picker.dataset.listenerAdded = 'true';
+                pickerInstance = new EmojiMart.Picker({
+                    data,
+                    onEmojiSelect: (emoji) => {
+                        if (targetCategoryId && emoji.native) {
+                            updateCategoryIcon(targetCategoryId, emoji.native);
+                            closeEmojiPicker();
+                        }
+                    },
+                    locale: 'ko',
+                    theme: 'light',
+                    set: 'native'
+                });
+                container.appendChild(pickerInstance);
+            } catch (err) {
+                console.error('Emoji-Mart data load failed:', err);
+                alert('이모지 데이터를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+                return;
+            }
         }
 
         document.getElementById('emoji-picker-overlay').classList.add('active');
