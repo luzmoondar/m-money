@@ -5,7 +5,26 @@ let transactionData = JSON.parse(localStorage.getItem('transactions')) || [];
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
-let currentCategoryModal = null; // Current category open in detail modal
+let currentCategoryModal = null;
+
+// Default Categories
+const DEFAULT_CATEGORIES = {
+    expense: [
+        { id: 'fixed', name: '고정지출', icon: '🏠' },
+        { id: 'food', name: '식비', icon: '🍚' },
+        { id: 'other', name: '기타', icon: '🎸' }
+    ],
+    savings: [
+        { id: 'savings_default', name: '저축', icon: '💰' }
+    ],
+    income: [
+        { id: 'salary', name: '월급', icon: '💵' },
+        { id: 'bonus', name: '보너스', icon: '🎁' }
+    ]
+};
+
+let userCategories = JSON.parse(localStorage.getItem('user_categories')) || DEFAULT_CATEGORIES;
+
 
 // ----------------------------
 // Initialize
@@ -37,19 +56,21 @@ export function initDashboard(user) {
         let income = 0;
         let expense = 0;
         let savings = 0;
-        let fixed = 0;
-        let food = 0;
-        let other = 0;
+
+        // Dynamic category totals
+        const categoryTotals = {};
+        [...userCategories.expense, ...userCategories.savings, ...userCategories.income].forEach(cat => {
+            categoryTotals[cat.id] = 0;
+        });
 
         monthlyItems.forEach(t => {
             if (t.type === 'income') income += t.amount;
-            if (t.type === 'expense') {
-                expense += t.amount;
-                if (t.category === 'fixed') fixed += t.amount;
-                else if (t.category === 'food') food += t.amount;
-                else if (t.category === 'other') other += t.amount;
-            }
+            if (t.type === 'expense') expense += t.amount;
             if (t.type === 'savings') savings += t.amount;
+
+            if (categoryTotals[t.category] !== undefined) {
+                categoryTotals[t.category] += t.amount;
+            }
         });
 
         const balance = income - expense - savings;
@@ -60,16 +81,48 @@ export function initDashboard(user) {
         document.getElementById('month-balance').textContent = `₩ ${balance.toLocaleString()}`;
         document.getElementById('month-savings').textContent = `₩ ${savings.toLocaleString()}`;
 
-        // Update DOM - Category Breakdown
-        updateCategoryCard('fixed', fixed);
-        updateCategoryCard('food', food);
-        updateCategoryCard('other', other);
+        renderCategoryLists(categoryTotals);
+    }
+
+    function renderCategoryLists(totals) {
+        const expenseList = document.getElementById('expense-category-list');
+        const savingsList = document.getElementById('savings-category-list');
+
+        if (expenseList) {
+            expenseList.innerHTML = '';
+            userCategories.expense.forEach(cat => {
+                expenseList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
+            });
+        }
+
+        if (savingsList) {
+            savingsList.innerHTML = '';
+            userCategories.savings.forEach(cat => {
+                savingsList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
+            });
+        }
+    }
+
+    function createCategoryCard(cat, amount) {
+        const card = document.createElement('div');
+        card.className = 'card category-card';
+        card.setAttribute('data-category', cat.id);
+        card.innerHTML = `
+            <div class="cat-header">
+                <span class="icon">${cat.icon}</span>
+                <h4>${cat.name}</h4>
+            </div>
+            <p class="cat-amount">₩ ${amount.toLocaleString()}</p>
+        `;
+        card.onclick = () => {
+            renderDetailModal(cat.id);
+            document.getElementById('detail-modal-overlay').classList.add('active');
+        };
+        return card;
     }
 
     function updateCategoryCard(catKey, totalAmount) {
-        // Total Amount
-        const amtEl = document.getElementById(`amt-${catKey}`);
-        if (amtEl) amtEl.textContent = `₩ ${totalAmount.toLocaleString()}`;
+        // Obsolete, but keeping for compatibility if referenced elsewhere temporarily
     }
 
     // 2. Render Recent Transactions (Top 5 Global)
@@ -149,7 +202,6 @@ export function initDashboard(user) {
 
     // 4. Render Yearly Stats (Overall)
     function renderYearlyStats() {
-        // Aggregate data for currentYear
         const yearlyItems = transactionData.filter(t => {
             const d = new Date(t.date);
             return d.getFullYear() === currentYear;
@@ -158,53 +210,69 @@ export function initDashboard(user) {
         let income = 0;
         let expense = 0;
         let savings = 0;
-        let fixed = 0;
-        let food = 0;
-        let other = 0;
+
+        const categoryTotals = {};
+        [...userCategories.expense, ...userCategories.savings, ...userCategories.income].forEach(cat => {
+            categoryTotals[cat.id] = 0;
+        });
 
         yearlyItems.forEach(t => {
             if (t.type === 'income') income += t.amount;
-            if (t.type === 'expense') {
-                expense += t.amount;
-                if (t.category === 'fixed') fixed += t.amount;
-                else if (t.category === 'food') food += t.amount;
-                else if (t.category === 'other') other += t.amount;
-            }
+            if (t.type === 'expense') expense += t.amount;
             if (t.type === 'savings') savings += t.amount;
+
+            if (categoryTotals[t.category] !== undefined) {
+                categoryTotals[t.category] += t.amount;
+            }
         });
 
         const rate = income > 0 ? Math.round((savings / income) * 100) : 0;
 
-        // Update DOM
         document.getElementById('year-income').textContent = `₩ ${income.toLocaleString()} `;
         document.getElementById('year-expense').textContent = `₩ ${expense.toLocaleString()} `;
         document.getElementById('year-savings').textContent = `₩ ${savings.toLocaleString()} `;
         const rateEl = document.getElementById('year-rate');
         if (rateEl) rateEl.textContent = rate;
 
-        // Update Bar Charts
-        const maxCat = Math.max(fixed, food, other, 1);
-        const bars = document.querySelectorAll('#section-overview .bar');
-        const values = document.querySelectorAll('#section-overview .bar-value');
+        // Update Bar Charts (Consumption only for now)
+        const chartContainer = document.querySelector('.visual-placeholder.bar-chart');
+        if (chartContainer) {
+            chartContainer.innerHTML = '';
 
-        if (bars[0]) bars[0].style.width = `${(fixed / maxCat) * 100}% `;
-        if (values[0]) values[0].textContent = `${Math.round((fixed / expense) * 100) || 0}% `;
+            // Show only expense categories in chart
+            const maxExpense = Math.max(...userCategories.expense.map(c => categoryTotals[c.id]), 1);
 
-        if (bars[1]) bars[1].style.width = `${(food / maxCat) * 100}% `;
-        if (values[1]) values[1].textContent = `${Math.round((food / expense) * 100) || 0}% `;
+            userCategories.expense.forEach(cat => {
+                const amount = categoryTotals[cat.id] || 0;
+                const pct = expense > 0 ? Math.round((amount / expense) * 100) : 0;
 
-        if (bars[2]) bars[2].style.width = `${(other / maxCat) * 100}% `;
-        if (values[2]) values[2].textContent = `${Math.round((other / expense) * 100) || 0}% `;
+                const barGroup = document.createElement('div');
+                barGroup.className = 'bar-group';
+                barGroup.innerHTML = `
+                    <div class="bar-label">${cat.name}</div>
+                    <div class="bar" style="width: ${(amount / maxExpense) * 100}%"></div>
+                    <div class="bar-value">${pct}%</div>
+                `;
+                chartContainer.appendChild(barGroup);
+            });
+        }
     }
 
     function getCategoryName(key) {
+        if (!key) return '미분류';
+        const all = [...userCategories.expense, ...userCategories.savings, ...userCategories.income];
+        const found = all.find(c => c.id === key);
+        if (found) return found.name;
+
+        // Fallback map for legacy/default keys
         const map = {
+            'salary': '월급',
+            'bonus': '보너스',
             'fixed': '고정지출',
             'food': '식비',
             'other': '기타',
-            'salary': '월급',
-            'bonus': '보너스',
-            'savings': '저축'
+            'savings': '저축',
+            'savings_default': '저축'
         };
         return map[key] || key;
     }
@@ -302,14 +370,58 @@ export function initDashboard(user) {
         }
     });
 
-    // --- Category Cards Detail View ---
-    document.querySelectorAll('.category-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const cat = card.getAttribute('data-category');
-            renderDetailModal(cat);
-            document.getElementById('detail-modal-overlay').classList.add('active');
-        });
+    // --- Add Category Buttons ---
+    document.querySelectorAll('.btn-add-category').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const type = btn.getAttribute('data-type');
+            const name = prompt(`${type === 'expense' ? '소비' : '저축'} 카테고리 이름을 입력하세요:`);
+            if (name && name.trim()) {
+                const newCat = {
+                    id: `custom_${Date.now()}`,
+                    name: name.trim(),
+                    icon: type === 'expense' ? '💸' : '📈'
+                };
+                userCategories[type].push(newCat);
+                localStorage.setItem('user_categories', JSON.stringify(userCategories));
+                renderMonthData(currentYear, currentMonth);
+                updateSelectDropdowns(); // Update transaction modal dropdowns
+            }
+        };
     });
+
+    function updateSelectDropdowns() {
+        const selects = document.querySelectorAll('#transaction-form select, #qa-category-select'); // if it existed
+        // We'll update the main modal dropdown based on type logic below
+    }
+
+    // --- Category Dropdown Logic ---
+    const typeRadios = document.querySelectorAll('input[name="type"]');
+    const categorySelect = document.querySelector('#transaction-form select');
+
+    function updateCategoryOptions(type) {
+        if (!categorySelect) return;
+        categorySelect.innerHTML = '';
+
+        let cats = [];
+        if (type === 'income') cats = userCategories.income;
+        else if (type === 'expense') cats = userCategories.expense;
+        else if (type === 'savings') cats = userCategories.savings;
+
+        cats.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            categorySelect.appendChild(opt);
+        });
+    }
+
+    typeRadios.forEach(radio => {
+        radio.onchange = () => updateCategoryOptions(radio.value);
+    });
+    // Initial call
+    updateCategoryOptions('expense');
+
 
     // --- Detail Modal Controls ---
     const detailOverlay = document.getElementById('detail-modal-overlay');

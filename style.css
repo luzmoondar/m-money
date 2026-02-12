@@ -408,34 +408,59 @@ body {
 /* Dashboard Grid Layout (Month View) */
 .dashboard-grid-row {
     display: grid;
-    grid-template-columns: 2fr 1.5fr;
-    /* Category Breakdown takes more space */
-    gap: var(--spacing-md);
-}
-
-/* Category Grid */
-.category-breakdown h2 {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: var(--spacing-md);
-}
-
-.charts-grid {
-    margin-bottom: 40px;
-    /* Added spacing bottom of chart area */
-}
-
-.subtitle-tip {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    font-weight: 400;
-    margin-left: 8px;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
 }
 
 .category-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
+}
+
+.column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.column-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.btn-add-category {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-accent);
+    color: white;
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.8;
+}
+
+.btn-add-category:hover {
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 4px 10px rgba(67, 24, 255, 0.2);
+}
+
+.recent-transactions-full {
+    margin-top: var(--spacing-lg);
+}
+
+.recent-transactions-full h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-md);
 }
 
 .category-card {
@@ -478,14 +503,8 @@ body {
 
 
 /* Recent Transactions List */
-.recent-transactions h2 {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: var(--spacing-md);
-}
-
 .recent-list-card {
-    min-height: 400px;
+    min-height: 200px;
 }
 
 .recent-list {

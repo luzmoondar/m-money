@@ -187,43 +187,37 @@
                     </div>
 
                     <div class="dashboard-grid-row">
-                        <!-- Category Breakdown -->
-                        <div class="category-breakdown">
-                            <h2>소비 상세(카테고리)</h2>
-                            <div class="category-grid">
-                                <div class="card category-card" data-category="fixed">
-                                    <div class="cat-header">
-                                        <span class="icon">🏠</span>
-                                        <h4>고정지출</h4>
-                                    </div>
-                                    <p class="cat-amount" id="amt-fixed">₩ 0</p>
-                                </div>
-                                <div class="card category-card" data-category="food">
-                                    <div class="cat-header">
-                                        <span class="icon">🍚</span>
-                                        <h4>식비</h4>
-                                    </div>
-                                    <p class="cat-amount" id="amt-food">₩ 0</p>
-                                </div>
-                                <div class="card category-card" data-category="other">
-                                    <div class="cat-header">
-                                        <span class="icon">🎸</span>
-                                        <h4>기타</h4>
-                                    </div>
-                                    <p class="cat-amount" id="amt-other">₩ 0</p>
-                                </div>
+                        <!-- Consumption Breakdown -->
+                        <div class="category-column">
+                            <div class="column-header">
+                                <h2>소비 상세</h2>
+                                <button class="btn-add-category" data-type="expense" title="소비 카테고리 추가">+</button>
+                            </div>
+                            <div class="category-grid" id="expense-category-list">
+                                <!-- Dynamically populated -->
                             </div>
                         </div>
 
-                        <!-- Recent Transactions -->
-                        <div class="recent-transactions">
-                            <h2>최근 소비 내역 (최신 5건)</h2>
-                            <div class="card recent-list-card">
-                                <ul id="recent-list" class="recent-list">
-                                    <!-- List items will be injected here -->
-                                    <li class="no-data">데이터가 없습니다.</li>
-                                </ul>
+                        <!-- Savings Breakdown -->
+                        <div class="category-column">
+                            <div class="column-header">
+                                <h2>저축 상세</h2>
+                                <button class="btn-add-category" data-type="savings" title="저축 카테고리 추가">+</button>
                             </div>
+                            <div class="category-grid" id="savings-category-list">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Transactions (Now full width below) -->
+                    <div class="recent-transactions-full">
+                        <h2>최근 소비 내역</h2>
+                        <div class="card recent-list-card">
+                            <ul id="recent-list" class="recent-list">
+                                <!-- List items populated here -->
+                                <li class="no-data">데이터가 없습니다.</li>
+                            </ul>
                         </div>
                     </div>
                 </section>
@@ -295,12 +289,8 @@
                 </div>
                 <div class="form-group">
                     <label>카테고리</label>
-                    <select>
-                        <option value="fixed">고정지출</option>
-                        <option value="food">식비</option>
-                        <option value="other">기타</option>
-                        <option value="salary">월급</option>
-                        <option value="bonus">보너스</option>
+                    <select id="transaction-category">
+                        <!-- Options dynamically populated by JS -->
                     </select>
                 </div>
                 <div class="form-group">
