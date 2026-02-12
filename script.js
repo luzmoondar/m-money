@@ -107,18 +107,58 @@ export function initDashboard(user) {
         const card = document.createElement('div');
         card.className = 'card category-card';
         card.setAttribute('data-category', cat.id);
+
+        // Check if it's a default category
+        const isDefault = ['fixed', 'food', 'other', 'savings_default', 'salary', 'bonus'].includes(cat.id);
+
         card.innerHTML = `
             <div class="cat-header">
                 <span class="icon">${cat.icon}</span>
                 <h4>${cat.name}</h4>
+                ${!isDefault ? `<button class="btn-delete-cat" title="삭제">&times;</button>` : ''}
             </div>
             <p class="cat-amount">₩ ${amount.toLocaleString()}</p>
         `;
-        card.onclick = () => {
+
+        // Card click (Detail View)
+        card.onclick = (e) => {
+            // If clicking delete button, don't open modal
+            if (e.target.classList.contains('btn-delete-cat')) return;
+
             renderDetailModal(cat.id);
             document.getElementById('detail-modal-overlay').classList.add('active');
         };
+
+        // Delete button logic
+        if (!isDefault) {
+            const delBtn = card.querySelector('.btn-delete-cat');
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까? 관련 내역은 삭제되지 않지만 '미분류'로 표시될 수 있습니다.`)) {
+                    deleteCategory(cat.id);
+                }
+            };
+        }
+
         return card;
+    }
+
+    function deleteCategory(catId) {
+        // Find which list it's in
+        let type = '';
+        if (userCategories.expense.find(c => c.id === catId)) type = 'expense';
+        else if (userCategories.savings.find(c => c.id === catId)) type = 'savings';
+        else if (userCategories.income.find(c => c.id === catId)) type = 'income';
+
+        if (type) {
+            userCategories[type] = userCategories[type].filter(c => c.id !== catId);
+            localStorage.setItem('user_categories', JSON.stringify(userCategories));
+            renderMonthData(currentYear, currentMonth);
+            // If the modal was open for this category, close it
+            if (currentCategoryModal === catId) {
+                document.getElementById('detail-modal-overlay').classList.remove('active');
+            }
+        }
     }
 
     function updateCategoryCard(catKey, totalAmount) {
