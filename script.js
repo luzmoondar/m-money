@@ -108,14 +108,11 @@ export function initDashboard(user) {
         card.className = 'card category-card';
         card.setAttribute('data-category', cat.id);
 
-        // Check if it's a default category
-        const isDefault = ['fixed', 'food', 'other', 'savings_default', 'salary', 'bonus'].includes(cat.id);
-
         card.innerHTML = `
             <div class="cat-header">
                 <span class="icon">${cat.icon}</span>
                 <h4>${cat.name}</h4>
-                ${!isDefault ? `<button class="btn-delete-cat" title="삭제">&times;</button>` : ''}
+                <button class="btn-delete-cat" title="삭제">&times;</button>
             </div>
             <p class="cat-amount">₩ ${amount.toLocaleString()}</p>
         `;
@@ -130,15 +127,13 @@ export function initDashboard(user) {
         };
 
         // Delete button logic
-        if (!isDefault) {
-            const delBtn = card.querySelector('.btn-delete-cat');
-            delBtn.onclick = (e) => {
-                e.stopPropagation();
-                if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까? 관련 내역은 삭제되지 않지만 '미분류'로 표시될 수 있습니다.`)) {
-                    deleteCategory(cat.id);
-                }
-            };
-        }
+        const delBtn = card.querySelector('.btn-delete-cat');
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까? \n해당 카테고리의 모든 내역도 함께 삭제되며, 이 작업은 되돌릴 수 없습니다.`)) {
+                deleteCategory(cat.id);
+            }
+        };
 
         return card;
     }
@@ -151,9 +146,19 @@ export function initDashboard(user) {
         else if (userCategories.income.find(c => c.id === catId)) type = 'income';
 
         if (type) {
+            // 1. Remove category
             userCategories[type] = userCategories[type].filter(c => c.id !== catId);
             localStorage.setItem('user_categories', JSON.stringify(userCategories));
+
+            // 2. Remove associated transactions
+            transactionData = transactionData.filter(t => t.category !== catId);
+            localStorage.setItem('transactions', JSON.stringify(transactionData));
+
+            // 3. Refresh UI
             renderMonthData(currentYear, currentMonth);
+            renderYearlyStats();
+            renderRecentTransactions();
+
             // If the modal was open for this category, close it
             if (currentCategoryModal === catId) {
                 document.getElementById('detail-modal-overlay').classList.remove('active');
@@ -196,9 +201,7 @@ export function initDashboard(user) {
             `;
             listEl.appendChild(li);
         });
-    }
-
-    // 3. Render Detail Modal Table
+    }      // 3. Render Detail Modal Table
     function renderDetailModal(category) {
         currentCategoryModal = category;
         const modalTitle = document.getElementById('detail-modal-title');
