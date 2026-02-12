@@ -154,42 +154,52 @@ function setupAuth() {
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newName = document.getElementById('profile-nickname').value;
-            if (!newName) return;
 
-            // Handle Image Save (Local Storage for Demo as Supabase Storage might not be setup)
-            // We save base64 string to localStorage with a key based on User ID
+            // Get current user data to fallback
+            const { data: { user } } = await supabase.auth.getUser();
+            const currentDisplayName = user?.user_metadata?.display_name;
+
+            // Handle Image Save
             const file = uploadInput.files[0];
             let avatarUrl = null;
 
             if (file) {
-                // Convert to Base64 and save to localStorage
-                // Ideally this should go to Supabase Storage
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 await new Promise(resolve => reader.onload = resolve);
                 avatarUrl = reader.result;
             }
 
-            // We update the user metadata with the nickname.
-            // For the avatar, if we had storage we'd put the URL in metadata.
-            // Here we will save the avatarUrl to localStorage keyed by user.id
-            // and separate metadata update.
+            const updateData = {};
+            if (newName) {
+                updateData.display_name = newName;
+            }
 
-            const { data, error } = await supabase.auth.updateUser({
-                data: { display_name: newName }
-            });
+            // Only call update if there's a nickname change. 
+            // If only image changed, we handle image separately below.
+            let userUpdateResult = { data: { user }, error: null };
+
+            if (newName) {
+                userUpdateResult = await supabase.auth.updateUser({
+                    data: updateData
+                });
+            }
+
+            const { data, error } = userUpdateResult;
 
             if (error) {
                 alert('프로필 수정 실패: ' + error.message);
             } else {
-
                 if (avatarUrl && data.user) {
                     localStorage.setItem(`avatar_${data.user.id}`, avatarUrl);
                 }
 
                 alert('프로필이 수정되었습니다.');
                 document.getElementById('profile-modal-overlay').classList.remove('active');
-                // Update UI immediately
+                profileForm.reset();
+                previewContainer.classList.remove('has-image');
+                previewImg.style.display = 'none';
+
                 if (data.user) {
                     showDashboard(data.user);
                 }
