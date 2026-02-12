@@ -153,11 +153,16 @@ function setupAuth() {
 
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const newName = document.getElementById('profile-nickname').value;
+            console.log("Profile form submission started");
 
-            // Get current user data to fallback
+            const newName = document.getElementById('profile-nickname').value.trim();
+
+            // Get current session/user
             const { data: { user } } = await supabase.auth.getUser();
-            const currentDisplayName = user?.user_metadata?.display_name;
+            if (!user) {
+                alert('로그인이 필요합니다.');
+                return;
+            }
 
             // Handle Image Save
             const file = uploadInput.files[0];
@@ -170,39 +175,36 @@ function setupAuth() {
                 avatarUrl = reader.result;
             }
 
-            const updateData = {};
-            if (newName) {
-                updateData.display_name = newName;
-            }
+            let updateError = null;
+            let finalUser = user;
 
-            // Only call update if there's a nickname change. 
-            // If only image changed, we handle image separately below.
-            let userUpdateResult = { data: { user }, error: null };
-
+            // Update nickname if provided
             if (newName) {
-                userUpdateResult = await supabase.auth.updateUser({
-                    data: updateData
+                const { data, error } = await supabase.auth.updateUser({
+                    data: { display_name: newName }
                 });
+                if (error) updateError = error;
+                else finalUser = data.user;
             }
 
-            const { data, error } = userUpdateResult;
-
-            if (error) {
-                alert('프로필 수정 실패: ' + error.message);
+            if (updateError) {
+                alert('프로필 수정 실패: ' + updateError.message);
             } else {
-                if (avatarUrl && data.user) {
-                    localStorage.setItem(`avatar_${data.user.id}`, avatarUrl);
+                // Save avatar URL to localStorage
+                if (avatarUrl) {
+                    localStorage.setItem(`avatar_${user.id}`, avatarUrl);
                 }
 
                 alert('프로필이 수정되었습니다.');
                 document.getElementById('profile-modal-overlay').classList.remove('active');
-                profileForm.reset();
-                previewContainer.classList.remove('has-image');
-                previewImg.style.display = 'none';
 
-                if (data.user) {
-                    showDashboard(data.user);
-                }
+                // Clear the form and preview for next time
+                profileForm.reset();
+                if (previewContainer) previewContainer.classList.remove('has-image');
+                if (previewImg) previewImg.style.display = 'none';
+
+                // Update UI
+                showDashboard(finalUser);
             }
         });
     }
