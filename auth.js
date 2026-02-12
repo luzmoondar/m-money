@@ -136,7 +136,7 @@ function setupAuth() {
         // Preview handling
         const uploadInput = document.getElementById('profile-upload');
         const previewImg = document.getElementById('profile-img-tag');
-        const initialEl = document.getElementById('profile-initial');
+        const previewContainer = document.getElementById('profile-preview');
 
         uploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -145,7 +145,7 @@ function setupAuth() {
                 reader.onload = (e) => {
                     previewImg.src = e.target.result;
                     previewImg.style.display = 'block';
-                    initialEl.style.display = 'none';
+                    previewContainer.classList.add('has-image');
                 };
                 reader.readAsDataURL(file);
             }

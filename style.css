@@ -972,8 +972,8 @@ body {
 }
 
 .profile-image-preview {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
     background-color: #F4F7FE;
     display: flex;
@@ -1013,8 +1013,8 @@ body {
 }
 
 .plus-icon {
-    font-size: 3rem;
-    font-weight: 300;
+    font-size: 4rem;
+    font-weight: 200;
     color: #A3AED0;
     transition: color 0.2s;
 }
