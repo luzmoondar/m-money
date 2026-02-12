@@ -957,9 +957,73 @@ body {
         flex-direction: column;
     }
 
-    #qa-date,
-    #qa-desc,
     #qa-amount {
         width: 100%;
     }
+}
+
+/* Profile Upload Styles */
+.profile-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.profile-image-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: #F4F7FE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 2px dashed #A3AED0;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.profile-image-preview:hover {
+    border-color: var(--color-accent);
+    background-color: #EEF2FF;
+}
+
+.profile-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.upload-label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: opacity 0.2s;
+}
+
+.plus-icon {
+    font-size: 3rem;
+    font-weight: 300;
+    color: #A3AED0;
+    transition: color 0.2s;
+}
+
+.profile-image-preview:hover .plus-icon {
+    color: var(--color-accent);
+}
+
+/* Hide plus icon when image is present */
+.profile-image-preview.has-image .plus-icon {
+    display: none;
 }
