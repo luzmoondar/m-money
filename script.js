@@ -93,6 +93,7 @@ export function initDashboard(user) {
             userCategories.expense.forEach(cat => {
                 expenseList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
             });
+            setupDragAndDrop('expense-category-list', 'expense');
         }
 
         if (savingsList) {
@@ -100,6 +101,7 @@ export function initDashboard(user) {
             userCategories.savings.forEach(cat => {
                 savingsList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
             });
+            setupDragAndDrop('savings-category-list', 'savings');
         }
     }
 
@@ -107,6 +109,7 @@ export function initDashboard(user) {
         const card = document.createElement('div');
         card.className = 'card category-card';
         card.setAttribute('data-category', cat.id);
+        card.draggable = true;
 
         card.innerHTML = `
             <div class="cat-header">
@@ -116,6 +119,17 @@ export function initDashboard(user) {
             </div>
             <p class="cat-amount">₩ ${amount.toLocaleString()}</p>
         `;
+
+        // Drag events
+        card.ondragstart = (e) => {
+            card.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', cat.id);
+            e.dataTransfer.effectAllowed = 'move';
+        };
+
+        card.ondragend = () => {
+            card.classList.remove('dragging');
+        };
 
         // Icon click (Emoji Picker)
         const iconBtn = card.querySelector('.icon');
@@ -143,6 +157,56 @@ export function initDashboard(user) {
         };
 
         return card;
+    }
+
+    // Drag and Drop Container Logic
+    function setupDragAndDrop(containerId, categoryType) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            const dragging = document.querySelector('.dragging');
+            if (!dragging) return;
+
+            const afterElement = getDragAfterElement(container, e.clientY);
+            if (afterElement == null) {
+                container.appendChild(dragging);
+            } else {
+                container.insertBefore(dragging, afterElement);
+            }
+        };
+
+        container.ondrop = (e) => {
+            e.preventDefault();
+            const newOrder = [...container.querySelectorAll('.category-card')].map(c => c.getAttribute('data-category'));
+
+            // Re-order the userCategories array
+            const reordered = [];
+            newOrder.forEach(id => {
+                const cat = userCategories[categoryType].find(c => c.id === id);
+                if (cat) reordered.push(cat);
+            });
+
+            userCategories[categoryType] = reordered;
+            localStorage.setItem('user_categories', JSON.stringify(userCategories));
+        };
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.category-card:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     // Emoji Picker Logic using Emoji-Mart (v5 JS API)

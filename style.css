@@ -1100,3 +1100,14 @@ em-emoji-picker {
     transform: scale(1.1);
     filter: brightness(0.9);
 }
+
+.category-card {
+    cursor: grab;
+    user-select: none;
+}
+
+.category-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    background-color: var(--bg-main);
+}
