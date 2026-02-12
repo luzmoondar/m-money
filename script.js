@@ -85,8 +85,17 @@ export function initDashboard(user) {
     }
 
     function renderCategoryLists(totals) {
+        const incomeList = document.getElementById('income-category-list');
         const expenseList = document.getElementById('expense-category-list');
         const savingsList = document.getElementById('savings-category-list');
+
+        if (incomeList) {
+            incomeList.innerHTML = '';
+            userCategories.income.forEach(cat => {
+                incomeList.appendChild(createCategoryCard(cat, totals[cat.id] || 0, 'income'));
+            });
+            setupDragAndDrop('income-category-list', 'income');
+        }
 
         if (expenseList) {
             expenseList.innerHTML = '';
@@ -435,28 +444,64 @@ export function initDashboard(user) {
         const rateEl = document.getElementById('year-rate');
         if (rateEl) rateEl.textContent = rate;
 
-        // Update Bar Charts (Consumption only for now)
-        const chartContainer = document.querySelector('.visual-placeholder.bar-chart');
-        if (chartContainer) {
-            chartContainer.innerHTML = '';
+        // Update Pie Charts
+        const expenseData = userCategories.expense.map(cat => ({
+            name: cat.name,
+            amount: categoryTotals[cat.id] || 0
+        })).filter(item => item.amount > 0);
 
-            // Show only expense categories in chart
-            const maxExpense = Math.max(...userCategories.expense.map(c => categoryTotals[c.id]), 1);
+        const savingsData = userCategories.savings.map(cat => ({
+            name: cat.name,
+            amount: categoryTotals[cat.id] || 0
+        })).filter(item => item.amount > 0);
 
-            userCategories.expense.forEach(cat => {
-                const amount = categoryTotals[cat.id] || 0;
-                const pct = expense > 0 ? Math.round((amount / expense) * 100) : 0;
+        renderPieChart('expense-pie-chart', 'expense-pie-legend', expenseData, expense);
+        renderPieChart('savings-pie-chart', 'savings-pie-legend', savingsData, savings);
+    }
 
-                const barGroup = document.createElement('div');
-                barGroup.className = 'bar-group';
-                barGroup.innerHTML = `
-                    <div class="bar-label">${cat.name}</div>
-                    <div class="bar" style="width: ${(amount / maxExpense) * 100}%"></div>
-                    <div class="bar-value">${pct}%</div>
-                `;
-                chartContainer.appendChild(barGroup);
-            });
+    const CHART_COLORS = [
+        '#4318FF', '#6AD2FF', '#2B3674', '#FFB547', '#01B574',
+        '#8A8D93', '#EC407A', '#AB47BC', '#7E57C2', '#26A69A'
+    ];
+
+    function renderPieChart(chartId, legendId, data, total) {
+        const chartEl = document.getElementById(chartId);
+        const legendEl = document.getElementById(legendId);
+        if (!chartEl || !legendEl) return;
+
+        legendEl.innerHTML = '';
+        if (total === 0 || data.length === 0) {
+            chartEl.style.background = '#f0f0f0';
+            legendEl.innerHTML = '<div class="legend-item">데이터가 없습니다.</div>';
+            return;
         }
+
+        let currentPct = 0;
+        const gradientParts = [];
+        const sortedData = [...data].sort((a, b) => b.amount - a.amount);
+
+        sortedData.forEach((item, index) => {
+            const pct = (item.amount / total) * 100;
+            const color = CHART_COLORS[index % CHART_COLORS.length];
+            gradientParts.push(`${color} ${currentPct}% ${currentPct + pct}%`);
+
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <div class="legend-left">
+                    <div class="color-box" style="background: ${color}"></div>
+                    <span>${item.name}</span>
+                </div>
+                <div class="legend-right">
+                    <span>₩${item.amount.toLocaleString()}</span>
+                    <span class="legend-pct">(${Math.round(pct)}%)</span>
+                </div>
+            `;
+            legendEl.appendChild(legendItem);
+            currentPct += pct;
+        });
+
+        chartEl.style.background = `conic-gradient(${gradientParts.join(', ')})`;
     }
 
     function getCategoryName(key) {
@@ -647,7 +692,10 @@ export function initDashboard(user) {
             return;
         }
 
-        const type = (currentCategoryModal === 'salary') ? 'income' : 'expense';
+        // Auto-determine type based on current category
+        let type = 'expense';
+        if (userCategories.income.some(c => c.id === currentCategoryModal)) type = 'income';
+        else if (userCategories.savings.some(c => c.id === currentCategoryModal)) type = 'savings';
 
         const newTx = {
             id: Date.now(),
