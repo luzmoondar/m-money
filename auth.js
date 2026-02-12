@@ -153,58 +153,65 @@ function setupAuth() {
 
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("Profile form submission started");
+            const submitBtn = profileForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
 
-            const newName = document.getElementById('profile-nickname').value.trim();
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '저장 중...';
 
-            // Get current session/user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                alert('로그인이 필요합니다.');
-                return;
-            }
+                const newName = document.getElementById('profile-nickname').value.trim();
 
-            // Handle Image Save
-            const file = uploadInput.files[0];
-            let avatarUrl = null;
+                // Get current user
+                const { data: { user }, error: userError } = await supabase.auth.getUser();
+                if (userError || !user) {
+                    throw new Error('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+                }
 
-            if (file) {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                await new Promise(resolve => reader.onload = resolve);
-                avatarUrl = reader.result;
-            }
+                // Handle Image Save
+                const file = uploadInput.files[0];
+                let avatarUrl = null;
 
-            let updateError = null;
-            let finalUser = user;
+                if (file) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    await new Promise(resolve => reader.onload = resolve);
+                    avatarUrl = reader.result;
+                }
 
-            // Update nickname if provided
-            if (newName) {
-                const { data, error } = await supabase.auth.updateUser({
-                    data: { display_name: newName }
-                });
-                if (error) updateError = error;
-                else finalUser = data.user;
-            }
+                let finalUser = user;
 
-            if (updateError) {
-                alert('프로필 수정 실패: ' + updateError.message);
-            } else {
+                // Only update nickname if a new one is provided.
+                if (newName && newName !== user.user_metadata.display_name) {
+                    const { data, error } = await supabase.auth.updateUser({
+                        data: { display_name: newName }
+                    });
+                    if (error) throw error;
+                    finalUser = data.user;
+                }
+
                 // Save avatar URL to localStorage
                 if (avatarUrl) {
                     localStorage.setItem(`avatar_${user.id}`, avatarUrl);
                 }
 
                 alert('프로필이 수정되었습니다.');
-                document.getElementById('profile-modal-overlay').classList.remove('active');
 
-                // Clear the form and preview for next time
+                // Success actions
+                document.getElementById('profile-modal-overlay').classList.remove('active');
                 profileForm.reset();
                 if (previewContainer) previewContainer.classList.remove('has-image');
                 if (previewImg) previewImg.style.display = 'none';
 
-                // Update UI
+                // Refresh Dashboard with potentially updated user data
                 showDashboard(finalUser);
+
+            } catch (err) {
+                console.error("Profile update error:", err);
+                alert('프로필 수정 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
             }
         });
     }
