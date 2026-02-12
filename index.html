@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M-Money</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Authentication Section -->
+    <div id="auth-container" class="auth-container">
+        <div class="auth-box">
+            <h1 class="auth-title">M-Money</h1>
+            <p class="auth-subtitle">간편하게 시작하는 자산 관리</p>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-email">이메일</label>
+                    <input type="email" id="login-email" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">비밀번호</label>
+                    <input type="password" id="login-password" placeholder="비밀번호 입력" required>
+                </div>
+                <button type="submit" class="btn-primary-full">로그인</button>
+                <div class="auth-switch">
+                    계정이 없으신가요? <button type="button" id="btn-show-signup">회원가입</button>
+                </div>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="signup-email">이메일</label>
+                    <input type="email" id="signup-email" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">비밀번호</label>
+                    <input type="password" id="signup-password" placeholder="6자 이상 입력" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="signup-nickname">닉네임</label>
+                    <input type="text" id="signup-nickname" placeholder="사용할 닉네임" required>
+                </div>
+                <button type="submit" class="btn-primary-full">회원가입</button>
+                <div class="auth-switch">
+                    이미 계정이 있으신가요? <button type="button" id="btn-show-login">로그인</button>
+                </div>
+            </form>
+            <div id="auth-message" class="auth-message"></div>
+        </div>
+    </div>
+
+    <div class="dashboard-container" id="dashboard-container" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2>My Money</h2>
+            </div>
+            <nav class="side-nav">
+                <button class="nav-item active" data-tab="overview">
+                    <span class="icon">📊</span> 전체 통계 (1년)
+                </button>
+                <div class="nav-divider"></div>
+                <button class="nav-item" data-tab="month-view">
+                    <span class="icon">📅</span> 월별 관리
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="nav-item logout-btn">
+                    <span class="icon">🚪</span> 로그아웃
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <h1 id="page-title">2026년 전체 통계</h1>
+                <div class="header-right">
+                    <button id="btn-add-transaction" class="btn-primary-sm">+ 내역 추가</button>
+                    <div class="user-profile">
+                        <span id="user-display-name">사용자님</span>
+                        <div class="avatar" id="user-avatar">U</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div id="content-area">
+
+                <!-- Section: Yearly Overview -->
+                <section id="section-overview" class="dashboard-section active">
+                    <div class="section-header">
+                        <h2>연간 통계</h2>
+                        <select id="year-select-overview" class="year-select">
+                            <option value="2026" selected>2026년</option>
+                            <option value="2027">2027년</option>
+                            <option value="2028">2028년</option>
+                        </select>
+                    </div>
+                    <div class="summary-cards">
+                        <div class="card summary-card">
+                            <h3>총 수입</h3>
+                            <p id="year-income" class="amount positive">₩ 0</p>
+                        </div>
+                        <div class="card summary-card">
+                            <h3>총 지출</h3>
+                            <p id="year-expense" class="amount negative">₩ 0</p>
+                        </div>
+                        <div class="card summary-card">
+                            <h3>총 저축</h3>
+                            <p id="year-savings" class="amount savings">₩ 0</p>
+                            <span class="badge">저축률 <span id="year-rate">0</span>%</span>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="card chart-card">
+                            <h3>카테고리별 소비(연간)</h3>
+                            <div class="visual-placeholder bar-chart">
+                                <div class="bar-group">
+                                    <div class="bar-label">고정지출</div>
+                                    <div class="bar" style="width: 0%;"></div>
+                                    <div class="bar-value">0%</div>
+                                </div>
+                                <div class="bar-group">
+                                    <div class="bar-label">식비</div>
+                                    <div class="bar" style="width: 0%;"></div>
+                                    <div class="bar-value">0%</div>
+                                </div>
+                                <div class="bar-group">
+                                    <div class="bar-label">기타</div>
+                                    <div class="bar" style="width: 0%;"></div>
+                                    <div class="bar-value">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Monthly View -->
+                <section id="section-month" class="dashboard-section">
+                    <!-- Month Navigation -->
+                    <div class="month-navigation">
+                        <button id="btn-prev-month" class="nav-arrow">&lt;</button>
+                        <div class="month-display-group">
+                            <select id="year-select-month" class="year-select-inline">
+                                <option value="2026" selected>2026년</option>
+                                <option value="2027">2027년</option>
+                                <option value="2028">2028년</option>
+                            </select>
+                            <h2 id="current-month-display">1월</h2>
+                        </div>
+                        <button id="btn-next-month" class="nav-arrow">&gt;</button>
+                    </div>
+
+                    <div class="summary-cards">
+                        <div class="card summary-card" id="card-salary" data-category="salary" style="cursor: pointer;">
+                            <div class="card-header-row">
+                                <h3>월급(수입)</h3>
+                                <span class="edit-icon">✏️</span>
+                            </div>
+                            <p id="month-income" class="amount positive">₩ 0</p>
+                        </div>
+                        <div class="card summary-card">
+                            <h3>총 지출</h3>
+                            <p id="month-expense" class="amount negative">₩ 0</p>
+                        </div>
+                        <div class="card summary-card">
+                            <h3>잔액</h3>
+                            <p id="month-balance" class="amount neutral">₩ 0</p>
+                        </div>
+                        <div class="card summary-card">
+                            <h3>이번 달 저축</h3>
+                            <p id="month-savings" class="amount savings">₩ 0</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid-row">
+                        <!-- Category Breakdown -->
+                        <div class="category-breakdown">
+                            <h2>소비 상세(카테고리)</h2>
+                            <div class="category-grid">
+                                <div class="card category-card" data-category="fixed">
+                                    <div class="cat-header">
+                                        <span class="icon">🏠</span>
+                                        <h4>고정지출</h4>
+                                    </div>
+                                    <p class="cat-amount" id="amt-fixed">₩ 0</p>
+                                </div>
+                                <div class="card category-card" data-category="food">
+                                    <div class="cat-header">
+                                        <span class="icon">🍚</span>
+                                        <h4>식비</h4>
+                                    </div>
+                                    <p class="cat-amount" id="amt-food">₩ 0</p>
+                                </div>
+                                <div class="card category-card" data-category="other">
+                                    <div class="cat-header">
+                                        <span class="icon">🎸</span>
+                                        <h4>기타</h4>
+                                    </div>
+                                    <p class="cat-amount" id="amt-other">₩ 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Transactions -->
+                        <div class="recent-transactions">
+                            <h2>최근 소비 내역 (최신 5건)</h2>
+                            <div class="card recent-list-card">
+                                <ul id="recent-list" class="recent-list">
+                                    <!-- List items will be injected here -->
+                                    <li class="no-data">데이터가 없습니다.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Details Modal (Excel-like) -->
+    <div id="detail-modal-overlay" class="modal-overlay">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 id="detail-modal-title">카테고리 상세</h3>
+                <button id="btn-close-detail" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="excel-table-container">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th>날짜</th>
+                                <th>내용</th>
+                                <th>금액</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-table-body">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Quick Add Row -->
+                <div class="quick-add-row">
+                    <input type="date" id="qa-date">
+                    <input type="text" id="qa-desc" placeholder="내용 입력">
+                    <input type="number" id="qa-amount" placeholder="금액">
+                    <button id="btn-quick-add" class="btn-primary-sm">추가</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="total-display">
+                    <span>총 지출:</span>
+                    <span id="detail-total-amount" class="amount negative">₩ 0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>내역 추가</h3>
+                <button id="btn-close-modal" class="close-btn">&times;</button>
+            </div>
+            <form id="transaction-form">
+                <input type="hidden" id="edit-id"> <!-- Hidden ID for editing -->
+                <div class="form-group">
+                    <label>날짜</label>
+                    <input type="date" required>
+                </div>
+                <div class="form-group">
+                    <label>구분</label>
+                    <div class="type-selector">
+                        <label><input type="radio" name="type" value="income"> 수입</label>
+                        <label><input type="radio" name="type" value="expense" checked> 지출</label>
+                        <label><input type="radio" name="type" value="savings"> 저축</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>카테고리</label>
+                    <select>
+                        <option value="fixed">고정지출</option>
+                        <option value="food">식비</option>
+                        <option value="other">기타</option>
+                        <option value="salary">월급</option>
+                        <option value="bonus">보너스</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>금액</label>
+                    <input type="number" placeholder="금액을 입력하세요" required>
+                </div>
+                <div class="form-group">
+                    <label>내용</label>
+                    <input type="text" placeholder="내용을 입력하세요">
+                </div>
+                <button type="submit" class="btn-submit">저장하기</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Edit Modal -->
+    <div id="profile-modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>프로필 수정</h3>
+                <button id="btn-close-profile" class="close-btn">&times;</button>
+            </div>
+            <form id="profile-form">
+                <div class="profile-upload-container">
+                    <div class="profile-image-preview" id="profile-preview">
+                        <img id="profile-img-tag" src="" alt="Profile" style="display: none;">
+                        <label for="profile-upload" class="upload-label">
+                            <span class="plus-icon">+</span>
+                        </label>
+                    </div>
+                    <input type="file" id="profile-upload" accept="image/*" style="display: none;">
+                </div>
+                <div class="form-group">
+                    <label>닉네임</label>
+                    <input type="text" id="profile-nickname" placeholder="새로운 닉네임" required>
+                </div>
+                <button type="submit" class="btn-submit">변경 사항 저장</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
