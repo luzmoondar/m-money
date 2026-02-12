@@ -134,10 +134,9 @@ function setupAuth() {
     const profileForm = document.getElementById('profile-form');
     if (profileForm) {
         // Preview handling
-        // Preview handling
         const uploadInput = document.getElementById('profile-upload');
         const previewImg = document.getElementById('profile-img-tag');
-        const previewContainer = document.getElementById('profile-preview');
+        const initialEl = document.getElementById('profile-initial');
 
         uploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -146,7 +145,7 @@ function setupAuth() {
                 reader.onload = (e) => {
                     previewImg.src = e.target.result;
                     previewImg.style.display = 'block';
-                    previewContainer.classList.add('has-image');
+                    initialEl.style.display = 'none';
                 };
                 reader.readAsDataURL(file);
             }
