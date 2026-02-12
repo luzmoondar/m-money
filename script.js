@@ -110,17 +110,24 @@ export function initDashboard(user) {
 
         card.innerHTML = `
             <div class="cat-header">
-                <span class="icon">${cat.icon}</span>
+                <span class="icon" title="아이콘 변경">${cat.icon}</span>
                 <h4>${cat.name}</h4>
                 <button class="btn-delete-cat" title="삭제">&times;</button>
             </div>
             <p class="cat-amount">₩ ${amount.toLocaleString()}</p>
         `;
 
+        // Icon click (Emoji Picker)
+        const iconBtn = card.querySelector('.icon');
+        iconBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent opening detail modal
+            openEmojiPicker(cat.id);
+        };
+
         // Card click (Detail View)
         card.onclick = (e) => {
-            // If clicking delete button, don't open modal
-            if (e.target.classList.contains('btn-delete-cat')) return;
+            // If clicking delete button or icon, do nothing (handled by their own listeners or stopped propagation)
+            if (e.target.closest('.btn-delete-cat') || e.target.closest('.icon')) return;
 
             renderDetailModal(cat.id);
             document.getElementById('detail-modal-overlay').classList.add('active');
@@ -137,6 +144,66 @@ export function initDashboard(user) {
 
         return card;
     }
+
+    // Emoji Picker Logic
+    const EMOJI_LIST = [
+        '💸', '💰', '🍚', '🏠', '🎸', '💵', '🎁', '📈', '🍔', '🍺',
+        '☕', '🚌', ' taxi', '🎬', '👗', '💊', '🎓', '🛋️', '📱', '🍼',
+        '🐶', '✈️', '🎾', '🚒', '🎁', '🛒', '🛁', '💄', '💇', '💻'
+    ];
+
+    let targetCategoryId = null;
+
+    function openEmojiPicker(catId) {
+        targetCategoryId = catId;
+        const emojiListEl = document.getElementById('emoji-list');
+        emojiListEl.innerHTML = '';
+
+        EMOJI_LIST.forEach(emoji => {
+            const div = document.createElement('div');
+            div.className = 'emoji-item';
+            div.textContent = emoji;
+            div.onclick = () => {
+                updateCategoryIcon(targetCategoryId, emoji);
+                closeEmojiPicker();
+            };
+            emojiListEl.appendChild(div);
+        });
+
+        document.getElementById('emoji-picker-overlay').classList.add('active');
+    }
+
+    function closeEmojiPicker() {
+        document.getElementById('emoji-picker-overlay').classList.remove('active');
+    }
+
+    function updateCategoryIcon(catId, newIcon) {
+        let type = '';
+        if (userCategories.expense.find(c => c.id === catId)) type = 'expense';
+        else if (userCategories.savings.find(c => c.id === catId)) type = 'savings';
+        else if (userCategories.income.find(c => c.id === catId)) type = 'income';
+
+        if (type) {
+            const cat = userCategories[type].find(c => c.id === catId);
+            if (cat) {
+                cat.icon = newIcon;
+                localStorage.setItem('user_categories', JSON.stringify(userCategories));
+                renderMonthData(currentYear, currentMonth); // Refresh UI
+            }
+        }
+    }
+
+    // Close buttons for emoji picker
+    const btnEmojiClose = document.getElementById('btn-close-emoji');
+    if (btnEmojiClose) btnEmojiClose.onclick = closeEmojiPicker;
+
+    const emojiOverlay = document.getElementById('emoji-picker-overlay');
+    if (emojiOverlay) {
+        emojiOverlay.onclick = (e) => {
+            if (e.target === emojiOverlay) closeEmojiPicker();
+        };
+    }
+
 
     function deleteCategory(catId) {
         // Find which list it's in
