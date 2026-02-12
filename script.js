@@ -145,28 +145,22 @@ export function initDashboard(user) {
         return card;
     }
 
-    // Emoji Picker Logic using Emoji-Mart
+    // Emoji Picker Logic using Emoji-Mart (v5 Web Component)
     let targetCategoryId = null;
-    let picker = null;
 
     function openEmojiPicker(catId) {
         targetCategoryId = catId;
-        const container = document.getElementById('emoji-picker-container');
+        const picker = document.querySelector('em-emoji-picker');
 
-        // Initialize picker only once
-        if (!picker) {
-            picker = new EmojiMart.Picker({
-                onEmojiSelect: (emoji) => {
-                    if (targetCategoryId) {
-                        updateCategoryIcon(targetCategoryId, emoji.native);
-                        closeEmojiPicker();
-                    }
-                },
-                locale: 'ko',
-                theme: 'light',
-                set: 'native'
+        // Add event listener only once
+        if (picker && !picker.dataset.listenerAdded) {
+            picker.addEventListener('emojiSelect', (selection) => {
+                if (targetCategoryId) {
+                    updateCategoryIcon(targetCategoryId, selection.detail.native);
+                    closeEmojiPicker();
+                }
             });
-            container.appendChild(picker);
+            picker.dataset.listenerAdded = 'true';
         }
 
         document.getElementById('emoji-picker-overlay').classList.add('active');

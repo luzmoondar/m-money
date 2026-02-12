@@ -1079,14 +1079,21 @@ body {
 }
 
 /* Emoji Picker Styles */
-/* Emoji Picker Styles */
 .emoji-modal {
-    max-width: 360px;
-    width: 100%;
+    max-width: 400px;
+    width: 95%;
+    padding: 20px;
 }
 
 #emoji-picker-container {
-    padding: 10px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+em-emoji-picker {
+    width: 100%;
+    max-height: 450px;
 }
 
 .cat-header .icon:hover {
