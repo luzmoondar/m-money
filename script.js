@@ -91,7 +91,7 @@ export function initDashboard(user) {
         if (expenseList) {
             expenseList.innerHTML = '';
             userCategories.expense.forEach(cat => {
-                expenseList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
+                expenseList.appendChild(createCategoryCard(cat, totals[cat.id] || 0, 'expense'));
             });
             setupDragAndDrop('expense-category-list', 'expense');
         }
@@ -99,16 +99,17 @@ export function initDashboard(user) {
         if (savingsList) {
             savingsList.innerHTML = '';
             userCategories.savings.forEach(cat => {
-                savingsList.appendChild(createCategoryCard(cat, totals[cat.id] || 0));
+                savingsList.appendChild(createCategoryCard(cat, totals[cat.id] || 0, 'savings'));
             });
             setupDragAndDrop('savings-category-list', 'savings');
         }
     }
 
-    function createCategoryCard(cat, amount) {
+    function createCategoryCard(cat, amount, categoryType) {
         const card = document.createElement('div');
         card.className = 'card category-card';
         card.setAttribute('data-category', cat.id);
+        card.setAttribute('data-type', categoryType);
         card.draggable = true;
 
         card.innerHTML = `
@@ -124,6 +125,7 @@ export function initDashboard(user) {
         card.ondragstart = (e) => {
             card.classList.add('dragging');
             e.dataTransfer.setData('text/plain', cat.id);
+            e.dataTransfer.setData('category-type', categoryType);
             e.dataTransfer.effectAllowed = 'move';
         };
 
@@ -165,11 +167,15 @@ export function initDashboard(user) {
         if (!container) return;
 
         container.ondragover = (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-
             const dragging = document.querySelector('.dragging');
             if (!dragging) return;
+
+            // Reordering logic: only allow if categories are of the same type
+            const draggingType = dragging.getAttribute('data-type');
+            if (draggingType !== categoryType) return;
+
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
 
             const afterElement = getDragAfterElement(container, e.clientY);
             if (afterElement == null) {
@@ -180,6 +186,12 @@ export function initDashboard(user) {
         };
 
         container.ondrop = (e) => {
+            const dragging = document.querySelector('.dragging');
+            if (!dragging) return;
+
+            const draggingType = dragging.getAttribute('data-type');
+            if (draggingType !== categoryType) return;
+
             e.preventDefault();
             const newOrder = [...container.querySelectorAll('.category-card')].map(c => c.getAttribute('data-category'));
 
