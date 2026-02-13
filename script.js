@@ -157,7 +157,6 @@ export async function initDashboard(user) {
                 }
 
                 const newTx = {
-                    id: Date.now(),
                     user_id: user.id,
                     date: date,
                     type: type,
@@ -176,7 +175,16 @@ export async function initDashboard(user) {
 
                 console.log("[QuickAdd] Insert SUCCESS! Response:", insertRes);
 
-                transactionData.push(newTx);
+                // Add to local data (with the ID returned from DB)
+                if (insertRes && insertRes[0]) {
+                    newTx.id = insertRes[0].id;
+                    transactionData.push(newTx);
+                } else {
+                    // Fallback if select failing but insert worked
+                    newTx.id = Date.now();
+                    transactionData.push(newTx);
+                }
+
                 alert('저장되었습니다!');
 
                 renderDetailModal(currentCategoryModal);
@@ -283,106 +291,75 @@ export async function initDashboard(user) {
     });
 
     // ----------------------------
-    // Fetch Data from Supabase (Async)
+    // Fetch Data from Supabase (Async & Parallel)
     // ----------------------------
-    console.log("[Dashboard] Starting data fetch for user.id:", user.id);
+    const syncData = async () => {
+        console.log("[Dashboard] Starting data sync for user.id:", user.id);
+        const withTimeout = (promise, ms = 15000) => {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+            ]);
+        };
 
-    // Helper for timeout (increased to 8s for slow networks)
-    const withTimeout = (promise, ms = 8000) => {
-        return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
-        ]);
+        try {
+            const [catResult, txResult] = await Promise.allSettled([
+                withTimeout(supabase.from('user_categories').select('*').eq('user_id', user.id).maybeSingle()),
+                withTimeout(supabase.from('transactions').select('*').eq('user_id', user.id))
+            ]);
+
+            // Process Categories
+            if (catResult.status === 'fulfilled' && !catResult.value.error) {
+                const catData = catResult.value.data;
+                if (catData) {
+                    console.log("[Dashboard] Categories synced.");
+                    userCategories = {
+                        expense: catData.expense || DEFAULT_CATEGORIES.expense,
+                        income: catData.income || DEFAULT_CATEGORIES.income,
+                        savings: catData.savings || DEFAULT_CATEGORIES.savings
+                    };
+                } else {
+                    console.log("[Dashboard] No categories found, creating defaults...");
+                    await supabase.from('user_categories').insert({
+                        user_id: user.id,
+                        expense: DEFAULT_CATEGORIES.expense,
+                        income: DEFAULT_CATEGORIES.income,
+                        savings: DEFAULT_CATEGORIES.savings
+                    });
+                    userCategories = { ...DEFAULT_CATEGORIES };
+                }
+            } else {
+                console.warn("[Dashboard] Category sync failed or timed out. Using current/default.");
+                if (!userCategories) userCategories = { ...DEFAULT_CATEGORIES };
+            }
+
+            // Process Transactions
+            if (txResult.status === 'fulfilled' && !txResult.value.error) {
+                const txData = txResult.value.data;
+                console.log(`[Dashboard] ${txData?.length || 0} Transactions synced.`);
+                if (txData) transactionData = txData;
+            } else {
+                console.warn("[Dashboard] Transaction sync failed or timed out.");
+            }
+
+            // Always render what we have
+            renderMonthData(currentYear, currentMonth);
+            renderYearlyStats();
+            renderRecentTransactions();
+            updateCategoryOptions('expense');
+            console.log("[Dashboard] Sync complete.");
+
+        } catch (err) {
+            console.error("[Dashboard] CRITICAL Sync error:", err);
+        }
     };
 
-    try {
-        // Categories - using maybeSingle() for robustness
-        console.log("[Dashboard] Fetching user categories... (Table: 'user_categories')");
-        const catRequest = supabase
-            .from('user_categories')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
+    // Attach Sync Button
+    const btnSync = document.getElementById('btn-sync-data');
+    if (btnSync) btnSync.onclick = () => syncData();
 
-        console.log("[Dashboard] Request sent, awaiting response (5s timeout)...");
-        const { data: catData, error: catError } = await withTimeout(catRequest);
-
-        if (catError) {
-            console.error("[Dashboard] Category fetch error details:", catError);
-            if (catError.status === 404 || catError.code === 'PGRST116') {
-                console.warn("[Dashboard] Table 'user_categories' not found or RLS issue. Using default categories.");
-                // User-friendly hint
-                if (!localStorage.getItem('db_hint_shown')) {
-                    alert("데이터베이스 테이블 접근에 문제가 있습니다. Supabase RLS 정책이나 테이블 이름을 확인해 주세요.");
-                    localStorage.setItem('db_hint_shown', 'true');
-                }
-            }
-            throw catError;
-        }
-        console.log("[Dashboard] Category fetch response received.");
-
-        if (catData) {
-            console.log("[Dashboard] Existing categories found.");
-            userCategories = {
-                expense: catData.expense || DEFAULT_CATEGORIES.expense,
-                income: catData.income || DEFAULT_CATEGORIES.income,
-                savings: catData.savings || DEFAULT_CATEGORIES.savings
-            };
-        } else {
-            console.log("[Dashboard] No categories found, creating defaults...");
-            const { error: insertError } = await supabase.from('user_categories').insert({
-                user_id: user.id,
-                expense: DEFAULT_CATEGORIES.expense,
-                income: DEFAULT_CATEGORIES.income,
-                savings: DEFAULT_CATEGORIES.savings
-            });
-            if (insertError) console.error("[Dashboard] Category creation failed:", insertError);
-            userCategories = { ...DEFAULT_CATEGORIES };
-        }
-
-        // Transactions
-        console.log("[Dashboard] Fetching transactions... (Table: 'transactions')");
-        const txRequest = supabase
-            .from('transactions')
-            .select('*')
-            .eq('user_id', user.id);
-
-        const { data: txData, error: txError } = await withTimeout(txRequest);
-
-        if (txError) {
-            console.error("[Dashboard] Transaction fetch error details:", txError);
-            if (txError.status === 404) {
-                alert("데이터베이스 오류: 'transactions' 테이블을 찾을 수 없습니다.");
-            }
-            throw txError;
-        }
-
-        if (txData) {
-            console.log(`[Dashboard] Fetched ${txData.length} transactions.`);
-            if (txData.length > 0) console.table(txData.slice(0, 10)); // Top 10 for debug
-            transactionData = txData;
-        }
-
-        // Perform Initial Renders
-        console.log("[Dashboard] Performing initial renders...");
-        renderMonthData(currentYear, currentMonth);
-        renderYearlyStats();
-        renderRecentTransactions();
-        updateCategoryOptions('expense');
-
-        console.timeEnd("DashboardInit");
-        console.log("[Dashboard] Initialization Complete.");
-
-    } catch (err) {
-        console.error("[Dashboard] CRITICAL: Data fetch failed, using fallback mode:", err);
-        userCategories = { ...DEFAULT_CATEGORIES };
-        transactionData = [];
-
-        // Initial renders should still happen with empty/default data
-        renderMonthData(currentYear, currentMonth);
-        renderYearlyStats();
-        renderRecentTransactions();
-    }
+    // Initial Load
+    await syncData();
 
     // ----------------------------
     // Render Functions (Defined in scope)
