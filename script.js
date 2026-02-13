@@ -18,8 +18,7 @@ const DEFAULT_CATEGORIES = {
         { id: 'savings_default', name: '저축', icon: '💰' }
     ],
     income: [
-        { id: 'salary', name: '월급', icon: '💵' },
-        { id: 'bonus', name: '보너스', icon: '🎁' }
+        { id: 'income_default', name: '수입', icon: '💰' }
     ]
 };
 
@@ -39,6 +38,23 @@ export function initDashboard(user) {
     const yearSelectOverview = document.getElementById('year-select-overview');
     const yearSelectMonth = document.getElementById('year-select-month');
     const pageTitle = document.getElementById('page-title'); // Global header title
+
+    // --- Data Migration for Income ---
+    if (userCategories.income.length > 1 || userCategories.income[0].id !== 'income_default') {
+        userCategories.income = DEFAULT_CATEGORIES.income;
+        localStorage.setItem('user_categories', JSON.stringify(userCategories));
+    }
+    // Migrate existing transactions
+    let migrated = false;
+    transactionData.forEach(t => {
+        if (t.type === 'income' && t.category !== 'income_default') {
+            t.category = 'income_default';
+            migrated = true;
+        }
+    });
+    if (migrated) {
+        localStorage.setItem('transactions', JSON.stringify(transactionData));
+    }
 
     // ----------------------------
     // Render Functions
@@ -384,8 +400,8 @@ export function initDashboard(user) {
         let total = 0;
 
         items.forEach(t => {
-            // Sum logic: if viewing salary, sum income. If viewing expense categories, sum expense.
-            if (category === 'salary') {
+            // Sum logic: if viewing income, sum income. If viewing expense categories, sum expense.
+            if (category === 'income_default') {
                 if (t.type === 'income') total += t.amount;
             } else {
                 if (t.type === 'expense') total += t.amount;
@@ -609,9 +625,9 @@ export function initDashboard(user) {
     // For now, we assume page reload or single login per session.
 
     document.addEventListener('click', (e) => {
-        const salaryCard = e.target.closest('#card-salary');
-        if (salaryCard) {
-            renderDetailModal('salary');
+        const incomeCard = e.target.closest('#card-income');
+        if (incomeCard) {
+            renderDetailModal('income_default');
             document.getElementById('detail-modal-overlay').classList.add('active');
         }
     });
