@@ -1,24 +1,7 @@
-const { createClient } = supabase;
-
-const SUPABASE_URL = "https://rqdwpnddynwjgekopiea.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_6g7yQMrnMAYll9cfoZGmUw_VbjeFMS4";
-
-const supabaseClient = createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-    {
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true
-        }
-    }
-);
-
 // ----------------------------
-// Data Model - Empty Start
+// Data Model - State
 // ----------------------------
-let transactionData = JSON.parse(localStorage.getItem('transactions')) || [];
-
+let transactionData = []; // Will be fetched from DB
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let currentCategoryModal = null;
@@ -38,39 +21,52 @@ const DEFAULT_CATEGORIES = {
     ]
 };
 
-let userCategories = JSON.parse(localStorage.getItem('user_categories')) || DEFAULT_CATEGORIES;
+let userCategories = { ...DEFAULT_CATEGORIES }; // Initial state
 
 
 // ----------------------------
 // Initialize
 // ----------------------------
 
-export function initDashboard(user) {
+export async function initDashboard(user) {
     console.log("Dashboard Initialized for:", user.email);
-    // You could load user-specific data here if Supabase DB was set up for transactions
-    // For now, we start with empty or local data.
+
+    // 1. Fetch Categories from Supabase
+    const { data: catData, error: catError } = await supabase
+        .from('user_categories')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+    if (catData) {
+        userCategories = {
+            expense: catData.expense || DEFAULT_CATEGORIES.expense,
+            income: catData.income || DEFAULT_CATEGORIES.income,
+            savings: catData.savings || DEFAULT_CATEGORIES.savings
+        };
+    } else {
+        // First timer - save defaults to DB
+        await supabase.from('user_categories').insert({
+            user_id: user.id,
+            expense: DEFAULT_CATEGORIES.expense,
+            income: DEFAULT_CATEGORIES.income,
+            savings: DEFAULT_CATEGORIES.savings
+        });
+        userCategories = { ...DEFAULT_CATEGORIES };
+    }
+
+    // 2. Fetch Transactions from Supabase
+    const { data: txData, error: txError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (txData) transactionData = txData;
 
     // Sync Selectors
     const yearSelectOverview = document.getElementById('year-select-overview');
     const yearSelectMonth = document.getElementById('year-select-month');
-    const pageTitle = document.getElementById('page-title'); // Global header title
-
-    // --- Data Migration for Income ---
-    if (userCategories.income.length > 1 || userCategories.income[0].id !== 'income_default') {
-        userCategories.income = DEFAULT_CATEGORIES.income;
-        localStorage.setItem('user_categories', JSON.stringify(userCategories));
-    }
-    // Migrate existing transactions
-    let migrated = false;
-    transactionData.forEach(t => {
-        if (t.type === 'income' && t.category !== 'income_default') {
-            t.category = 'income_default';
-            migrated = true;
-        }
-    });
-    if (migrated) {
-        localStorage.setItem('transactions', JSON.stringify(transactionData));
-    }
+    const pageTitle = document.getElementById('page-title');
 
     // ----------------------------
     // Render Functions
@@ -689,7 +685,7 @@ export function initDashboard(user) {
 
     // --- Add Category Buttons ---
     document.querySelectorAll('.btn-add-category').forEach(btn => {
-        btn.onclick = (e) => {
+        btn.onclick = async (e) => {
             e.stopPropagation();
             const type = btn.getAttribute('data-type');
             const name = prompt(`${type === 'expense' ? '소비' : '저축'} 카테고리 이름을 입력하세요:`);
@@ -700,9 +696,17 @@ export function initDashboard(user) {
                     icon: type === 'expense' ? '💸' : '📈'
                 };
                 userCategories[type].push(newCat);
-                localStorage.setItem('user_categories', JSON.stringify(userCategories));
+
+                // Save updated categories to DB
+                const { error } = await supabase
+                    .from('user_categories')
+                    .update({ [type]: userCategories[type] })
+                    .eq('user_id', user.id);
+
+                if (error) alert('카테고리 저장 실패: ' + error.message);
+
                 renderMonthData(currentYear, currentMonth);
-                updateSelectDropdowns(); // Update transaction modal dropdowns
+                updateSelectDropdowns();
             }
         };
     });
@@ -751,7 +755,7 @@ export function initDashboard(user) {
     };
 
     // --- Quick Add inside Detail Modal ---
-    document.getElementById('btn-quick-add').onclick = () => {
+    document.getElementById('btn-quick-add').onclick = async () => {
         if (!currentCategoryModal) return;
 
         const date = document.getElementById('qa-date').value;
@@ -763,7 +767,6 @@ export function initDashboard(user) {
             return;
         }
 
-        // Auto-determine type based on current category
         let type = 'expense';
         if (userCategories.income.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'income_default') {
             type = 'income';
@@ -773,6 +776,7 @@ export function initDashboard(user) {
 
         const newTx = {
             id: Date.now(),
+            user_id: user.id,
             date: date,
             type: type,
             category: currentCategoryModal,
@@ -780,9 +784,13 @@ export function initDashboard(user) {
             desc: desc
         };
 
-        transactionData.push(newTx);
-        localStorage.setItem('transactions', JSON.stringify(transactionData));
+        const { error } = await supabase.from('transactions').insert(newTx);
+        if (error) {
+            alert('저장 중 오류가 발생했습니다: ' + error.message);
+            return;
+        }
 
+        transactionData.push(newTx);
         renderDetailModal(currentCategoryModal);
         renderMonthData(currentYear, currentMonth);
         renderYearlyStats();
@@ -790,8 +798,6 @@ export function initDashboard(user) {
 
         document.getElementById('qa-desc').value = '';
         document.getElementById('qa-amount').value = '';
-
-        // No longer resetting date to today; keep user's last selected date
     };
 
     // --- Global Add Transaction Modal ---
@@ -800,7 +806,7 @@ export function initDashboard(user) {
     // Remove previous listener to be safe? 
     // Clone and replace to strip listeners is a hack.
     // For now, simpler: we assume init is called once.
-    formTransaction.onsubmit = (e) => {
+    formTransaction.onsubmit = async (e) => {
         e.preventDefault();
 
         const idInput = document.getElementById('edit-id');
@@ -813,36 +819,33 @@ export function initDashboard(user) {
         const desc = formTransaction.querySelector('input[type="text"]').value;
 
         if (editId) {
-            // Update existing
-            const idx = transactionData.findIndex(t => t.id === editId);
-            if (idx > -1) {
-                transactionData[idx] = { ...transactionData[idx], date, type, category, amount, desc };
+            const updated = { date, type, category, amount, desc };
+            const { error } = await supabase.from('transactions').update(updated).eq('id', editId);
+            if (error) {
+                alert('수정 중 오류가 발생했습니다.');
+                return;
             }
+            const idx = transactionData.findIndex(t => t.id === editId);
+            if (idx > -1) transactionData[idx] = { ...transactionData[idx], ...updated };
         } else {
-            // Create new
-            transactionData.push({
-                id: Date.now(),
-                date: date,
-                type: type,
-                category: category,
-                amount: amount,
-                desc: desc
-            });
+            const newTx = { id: Date.now(), user_id: user.id, date, type, category, amount, desc };
+            const { error } = await supabase.from('transactions').insert(newTx);
+            if (error) {
+                alert('저장 중 오류가 발생했습니다.');
+                return;
+            }
+            transactionData.push(newTx);
         }
-
-        // Save to LocalStorage
-        localStorage.setItem('transactions', JSON.stringify(transactionData));
 
         alert('저장되었습니다.');
         document.getElementById('modal-overlay').classList.remove('active');
         formTransaction.reset();
-        if (idInput) idInput.value = ''; // Clear ID
+        if (idInput) idInput.value = '';
 
         renderMonthData(currentYear, currentMonth);
         renderYearlyStats();
         renderRecentTransactions();
 
-        // If modal was open, refresh it
         if (currentCategoryModal && document.getElementById('detail-modal-overlay').classList.contains('active')) {
             renderDetailModal(currentCategoryModal);
         }
@@ -875,12 +878,16 @@ export function initDashboard(user) {
     init();
 
     // Export delete function
-    window.deleteTransaction = function (id) {
+    window.deleteTransaction = async function (id) {
         if (confirm('삭제하시겠습니까?')) {
+            const { error } = await supabase.from('transactions').delete().eq('id', id);
+            if (error) {
+                alert('삭제 중 오류가 발생했습니다.');
+                return;
+            }
             const idx = transactionData.findIndex(t => t.id === id);
             if (idx > -1) {
                 transactionData.splice(idx, 1);
-                localStorage.setItem('transactions', JSON.stringify(transactionData)); // Save
                 renderDetailModal(currentCategoryModal);
                 renderMonthData(currentYear, currentMonth);
                 renderYearlyStats();

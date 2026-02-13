@@ -1,11 +1,6 @@
 
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
 import { initDashboard } from "./script.js";
-
-// Supabase Configuration
-const supabaseUrl = "https://rqdwpnddynwjgekopiea.supabase.co"
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxZHdwbmRkeW53amdla29waWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MzQ3MzcsImV4cCI6MjA4NjQxMDczN30.i431TCpDpYQ6wObMnr62iRiqF6tyDj5hRGk73ZPFe4Y"
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from "./supabase.js";
 
 // DOM Elements
 const authContainer = document.getElementById('auth-container');
