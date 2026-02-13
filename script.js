@@ -293,8 +293,13 @@ export async function initDashboard(user) {
 
         if (catError) {
             console.error("[Dashboard] Category fetch error details:", catError);
-            if (catError.status === 404 || catError.code === 'PGRST116' || catError.message?.includes('not found')) {
-                alert("데이터베이스 오류: 'user_categories' 테이블을 찾을 수 없습니다. Supabase 대시보드에서 테이블 이름이 정확한지 확인해 주세요.");
+            if (catError.status === 404 || catError.code === 'PGRST116') {
+                console.warn("[Dashboard] Table 'user_categories' not found or RLS issue. Using default categories.");
+                // User-friendly hint
+                if (!localStorage.getItem('db_hint_shown')) {
+                    alert("데이터베이스 테이블 접근에 문제가 있습니다. Supabase RLS 정책이나 테이블 이름을 확인해 주세요.");
+                    localStorage.setItem('db_hint_shown', 'true');
+                }
             }
             throw catError;
         }
