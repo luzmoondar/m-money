@@ -133,10 +133,10 @@ export async function initDashboard(user) {
         }
     });
 
-    // --- Quick Add inside Detail Modal ---
     const btnQuickAdd = document.getElementById('btn-quick-add');
     if (btnQuickAdd) {
         btnQuickAdd.onclick = async () => {
+            console.log("[QuickAdd] Clicked! Modal Category:", currentCategoryModal);
             try {
                 if (!currentCategoryModal) return;
                 const date = document.getElementById('qa-date').value;
@@ -279,6 +279,15 @@ export async function initDashboard(user) {
     // Fetch Data from Supabase (Async)
     // ----------------------------
     console.log("[Dashboard] Starting data fetch from Supabase...");
+
+    // Helper for timeout
+    const withTimeout = (promise, ms = 5000) => {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
+        ]);
+    };
+
     try {
         // Categories - using maybeSingle() for robustness
         console.log("[Dashboard] Fetching user categories... (Table: 'user_categories')");
@@ -288,8 +297,8 @@ export async function initDashboard(user) {
             .eq('user_id', user.id)
             .maybeSingle();
 
-        console.log("[Dashboard] Request sent, awaiting response...");
-        const { data: catData, error: catError } = await catRequest;
+        console.log("[Dashboard] Request sent, awaiting response (5s timeout)...");
+        const { data: catData, error: catError } = await withTimeout(catRequest);
 
         if (catError) {
             console.error("[Dashboard] Category fetch error details:", catError);
@@ -331,7 +340,7 @@ export async function initDashboard(user) {
             .select('*')
             .eq('user_id', user.id);
 
-        const { data: txData, error: txError } = await txRequest;
+        const { data: txData, error: txError } = await withTimeout(txRequest);
 
         if (txError) {
             console.error("[Dashboard] Transaction fetch error details:", txError);
