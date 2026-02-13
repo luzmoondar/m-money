@@ -734,8 +734,6 @@ export function initDashboard(user) {
         };
 
         transactionData.push(newTx);
-
-        // 🔥 이 줄 추가
         localStorage.setItem('transactions', JSON.stringify(transactionData));
 
         renderDetailModal(currentCategoryModal);
@@ -745,6 +743,13 @@ export function initDashboard(user) {
 
         document.getElementById('qa-desc').value = '';
         document.getElementById('qa-amount').value = '';
+
+        // Reset date to today after add
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('qa-date').value = `${yyyy}-${mm}-${dd}`;
     };
 
     // --- Global Add Transaction Modal ---
@@ -816,18 +821,22 @@ export function initDashboard(user) {
         // Sync UI with current date
         yearSelectOverview.value = currentYear;
         yearSelectMonth.value = currentYear;
-        document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
-        renderMonthData(currentYear, currentMonth);
-        renderYearlyStats();
-        renderRecentTransactions();
-
-        // Pre-fill quick add date
+        // Initialize date pickers to today
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
+        const formattedDate = `${yyyy}-${mm}-${dd}`;
+
         const qaDate = document.getElementById('qa-date');
-        if (qaDate) qaDate.value = `${yyyy}-${mm}-${dd}`;
+        if (qaDate) qaDate.value = formattedDate;
+
+        const mainFormDate = formTransaction.querySelector('input[type="date"]');
+        if (mainFormDate) mainFormDate.value = formattedDate;
+
+        renderMonthData(currentYear, currentMonth);
+        renderYearlyStats();
+        renderRecentTransactions();
     }
 
     init();
