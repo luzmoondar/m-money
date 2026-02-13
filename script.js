@@ -389,23 +389,32 @@ export function initDashboard(user) {
         currentCategoryModal = category;
         const modalTitle = document.getElementById('detail-modal-title');
         const tbody = document.getElementById('detail-table-body');
+        const footerLabel = document.querySelector('.total-display span:first-child');
         const totalFooter = document.getElementById('detail-total-amount');
 
         const catName = getCategoryName(category);
         modalTitle.textContent = `${catName} 상세 내역`;
 
-        const items = transactionData.filter(t => t.category === category).sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Filter by category AND current month to match summary cards
+        const items = transactionData.filter(t => {
+            const d = new Date(t.date);
+            return t.category === category &&
+                d.getFullYear() === currentYear &&
+                (d.getMonth() + 1) === currentMonth;
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         tbody.innerHTML = '';
         let total = 0;
 
+        // Determine type and label
+        let categoryType = 'expense';
+        if (userCategories.income.some(c => c.id === category)) categoryType = 'income';
+        else if (userCategories.savings.some(c => c.id === category)) categoryType = 'savings';
+
+        footerLabel.textContent = categoryType === 'income' ? '총 수입:' : (categoryType === 'savings' ? '총 저축:' : '총 지출:');
+
         items.forEach(t => {
-            // Sum logic: if viewing income, sum income. If viewing expense categories, sum expense.
-            if (category === 'income_default') {
-                if (t.type === 'income') total += t.amount;
-            } else {
-                if (t.type === 'expense') total += t.amount;
-            }
+            total += t.amount;
 
             const className = t.type === 'expense' ? 'amount negative' : 'amount positive';
 
@@ -528,6 +537,7 @@ export function initDashboard(user) {
 
         // Fallback map for legacy/default keys
         const map = {
+            'income_default': '수입',
             'salary': '월급',
             'bonus': '보너스',
             'fixed': '고정지출',
@@ -805,11 +815,16 @@ export function initDashboard(user) {
         // Sync UI with current date
         yearSelectOverview.value = currentYear;
         yearSelectMonth.value = currentYear;
-        updateMonthDisplay();
+        document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
+        renderMonthData(currentYear, currentMonth);
 
-        renderYearlyStats();
-        // renderMonthData is called by updateMonthDisplay
-        renderRecentTransactions();
+        // Pre-fill quick add date
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const qaDate = document.getElementById('qa-date');
+        if (qaDate) qaDate.value = `${yyyy}-${mm}-${dd}`;
     }
 
     init();
