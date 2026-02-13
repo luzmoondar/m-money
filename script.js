@@ -40,20 +40,47 @@ export async function initDashboard(user) {
     // ----------------------------
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.dashboard-section');
+    const displayMonth = document.getElementById('current-month-display');
+
+    function updateMonthDisplay() {
+        displayMonth.textContent = `${currentMonth} 월`;
+        renderMonthData(currentYear, currentMonth);
+    }
+
+    function changeMonth(delta) {
+        currentMonth += delta;
+        if (currentMonth > 12) {
+            currentMonth = 1;
+            yearSelectMonth.value = ++currentYear;
+            yearSelectOverview.value = currentYear;
+        } else if (currentMonth < 1) {
+            currentMonth = 12;
+            yearSelectMonth.value = --currentYear;
+            yearSelectOverview.value = currentYear;
+        }
+        updateMonthDisplay();
+        renderYearlyStats();
+    }
+
+    function changeYear(newYear) {
+        currentYear = parseInt(newYear);
+        yearSelectOverview.value = currentYear;
+        yearSelectMonth.value = currentYear;
+        renderYearlyStats();
+        renderMonthData(currentYear, currentMonth);
+        if (document.getElementById('section-overview').classList.contains('active')) {
+            pageTitle.textContent = `${currentYear}년 전체 통계`;
+        }
+    }
 
     navItems.forEach(item => {
         item.onclick = () => {
             if (item.classList.contains('logout-btn')) return;
-
-            navItems.forEach(nav => {
-                if (!nav.classList.contains('logout-btn')) nav.classList.remove('active');
-            });
+            navItems.forEach(nav => { if (!nav.classList.contains('logout-btn')) nav.classList.remove('active'); });
             item.classList.add('active');
-
             const tabId = item.getAttribute('data-tab');
             sections.forEach(section => section.classList.remove('active'));
             document.getElementById(tabId === 'overview' ? 'section-overview' : 'section-month').classList.add('active');
-
             if (tabId === 'overview') {
                 renderYearlyStats();
                 pageTitle.style.display = 'block';
@@ -65,8 +92,18 @@ export async function initDashboard(user) {
         };
     });
 
+    document.getElementById('btn-prev-month').onclick = () => changeMonth(-1);
+    document.getElementById('btn-next-month').onclick = () => changeMonth(1);
+    yearSelectOverview.onchange = (e) => changeYear(e.target.value);
+    yearSelectMonth.onchange = (e) => changeYear(e.target.value);
+
+    // Initial sync
+    yearSelectOverview.value = currentYear;
+    yearSelectMonth.value = currentYear;
+    displayMonth.textContent = `${currentMonth} 월`;
+
     // ----------------------------
-    // Fetch Data from Supabase
+    // Fetch Data from Supabase (Async)
     // ----------------------------
     try {
         console.log("Fetching data for:", user.email);
@@ -103,9 +140,13 @@ export async function initDashboard(user) {
 
         if (txData) transactionData = txData;
 
+        // Re-render once data is loaded
+        renderMonthData(currentYear, currentMonth);
+        renderYearlyStats();
+        renderRecentTransactions();
+
     } catch (err) {
         console.error("Data fetch failed, using defaults:", err);
-        // Ensure UI stays usable
         userCategories = { ...DEFAULT_CATEGORIES };
         transactionData = [];
     }
@@ -294,7 +335,14 @@ export async function initDashboard(user) {
             });
 
             userCategories[categoryType] = reordered;
-            localStorage.setItem('user_categories', JSON.stringify(userCategories));
+
+            // Save to Supabase
+            supabase.from('user_categories')
+                .update({ [categoryType]: reordered })
+                .eq('user_id', user.id)
+                .then(({ error }) => {
+                    if (error) console.error("Failed to save reordered categories:", error);
+                });
         };
     }
 
@@ -363,7 +411,14 @@ export async function initDashboard(user) {
             const cat = userCategories[type].find(c => c.id === catId);
             if (cat) {
                 cat.icon = newIcon;
-                localStorage.setItem('user_categories', JSON.stringify(userCategories));
+
+                // Save to Supabase
+                supabase.from('user_categories')
+                    .update({ [type]: userCategories[type] })
+                    .eq('user_id', user.id)
+                    .then(({ error }) => {
+                        if (error) alert('아이콘 저장 실패: ' + error.message);
+                    });
 
                 // Refresh all UI parts that might show the icon
                 renderMonthData(currentYear, currentMonth);
@@ -397,7 +452,14 @@ export async function initDashboard(user) {
         if (type) {
             // 1. Remove category
             userCategories[type] = userCategories[type].filter(c => c.id !== catId);
-            localStorage.setItem('user_categories', JSON.stringify(userCategories));
+
+            // 1b. Save to Supabase
+            supabase.from('user_categories')
+                .update({ [type]: userCategories[type] })
+                .eq('user_id', user.id)
+                .then(({ error }) => {
+                    if (error) alert('카테고리 삭제 반영 실패: ' + error.message);
+                });
 
             // 2. Remove associated transactions
             transactionData = transactionData.filter(t => t.category !== catId);
@@ -629,53 +691,8 @@ export async function initDashboard(user) {
 
 
     // ----------------------------
-    // Navigation listener already attached at start of initDashboard
+    // Navigation & Year Selection already attached at start of initDashboard
     // ----------------------------
-
-    // Month Navigation
-    const displayMonth = document.getElementById('current-month-display');
-
-    function updateMonthDisplay() {
-        displayMonth.textContent = `${currentMonth} 월`;
-        renderMonthData(currentYear, currentMonth);
-    }
-
-    function changeMonth(delta) {
-        currentMonth += delta;
-        if (currentMonth > 12) {
-            currentMonth = 1;
-            yearSelectMonth.value = ++currentYear;
-            yearSelectOverview.value = currentYear;
-        } else if (currentMonth < 1) {
-            currentMonth = 12;
-            yearSelectMonth.value = --currentYear;
-            yearSelectOverview.value = currentYear;
-        }
-        updateMonthDisplay();
-        renderYearlyStats(); // In case year changed
-    }
-
-    document.getElementById('btn-prev-month').onclick = () => changeMonth(-1);
-    document.getElementById('btn-next-month').onclick = () => changeMonth(1);
-
-    // Year Selection
-    function changeYear(newYear) {
-        currentYear = parseInt(newYear);
-        yearSelectOverview.value = currentYear;
-        yearSelectMonth.value = currentYear;
-
-        // Update views
-        renderYearlyStats();
-        renderMonthData(currentYear, currentMonth);
-
-        // Update Title if in Overview
-        if (document.getElementById('section-overview').classList.contains('active')) {
-            pageTitle.textContent = `${currentYear}년 전체 통계`;
-        }
-    }
-
-    yearSelectOverview.onchange = (e) => changeYear(e.target.value);
-    yearSelectMonth.onchange = (e) => changeYear(e.target.value);
 
     // --- Salary Card Click (Event Delegation) ---
     // Ensure we don't add multiple listeners if init called multiple times.
@@ -770,48 +787,72 @@ export async function initDashboard(user) {
 
     // --- Quick Add inside Detail Modal ---
     document.getElementById('btn-quick-add').onclick = async () => {
-        if (!currentCategoryModal) return;
+        try {
+            if (!currentCategoryModal) {
+                console.error("No category selected for quick add.");
+                return;
+            }
 
-        const date = document.getElementById('qa-date').value;
-        const desc = document.getElementById('qa-desc').value;
-        const amount = parseInt(document.getElementById('qa-amount').value);
+            let date = document.getElementById('qa-date').value;
+            const desc = document.getElementById('qa-desc').value;
+            const amountStr = document.getElementById('qa-amount').value;
+            const amount = parseInt(amountStr);
 
-        if (!date || !amount) {
-            alert('날짜와 금액을 입력해주세요.');
-            return;
+            // Fallback for date if empty
+            if (!date) {
+                const now = new Date();
+                date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            }
+
+            if (!amount || isNaN(amount)) {
+                alert('금액을 입력해주세요.');
+                return;
+            }
+
+            console.log("Quick Adding Transaction:", { date, amount, currentCategoryModal });
+
+            let type = 'expense';
+            if (userCategories.income.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'income_default') {
+                type = 'income';
+            } else if (userCategories.savings.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'savings_default') {
+                type = 'savings';
+            }
+
+            const newTx = {
+                id: Date.now(),
+                user_id: user.id,
+                date: date,
+                type: type,
+                category: currentCategoryModal,
+                amount: parseInt(amount),
+                desc: desc || ''
+            };
+
+            const { error } = await supabase.from('transactions').insert(newTx);
+            if (error) {
+                console.error("Supabase insert error:", error);
+                alert('저장 중 오류가 발생했습니다: ' + error.message);
+                return;
+            }
+
+            transactionData.push(newTx);
+
+            // Re-render UI
+            renderDetailModal(currentCategoryModal);
+            renderMonthData(currentYear, currentMonth);
+            renderYearlyStats();
+            renderRecentTransactions();
+
+            // Clear inputs
+            document.getElementById('qa-desc').value = '';
+            document.getElementById('qa-amount').value = '';
+
+            console.log("Quick Add Successful");
+
+        } catch (err) {
+            console.error("Quick add failed unexpectedly:", err);
+            alert("처리 중 오류가 발생했습니다. 다시 시도해 주세요.");
         }
-
-        let type = 'expense';
-        if (userCategories.income.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'income_default') {
-            type = 'income';
-        } else if (userCategories.savings.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'savings_default') {
-            type = 'savings';
-        }
-
-        const newTx = {
-            id: Date.now(),
-            user_id: user.id,
-            date: date,
-            type: type,
-            category: currentCategoryModal,
-            amount: amount,
-            desc: desc
-        };
-
-        const { error } = await supabase.from('transactions').insert(newTx);
-        if (error) {
-            alert('저장 중 오류가 발생했습니다: ' + error.message);
-            return;
-        }
-
-        transactionData.push(newTx);
-        renderDetailModal(currentCategoryModal);
-        renderMonthData(currentYear, currentMonth);
-        renderYearlyStats();
-        renderRecentTransactions();
-
-        document.getElementById('qa-desc').value = '';
-        document.getElementById('qa-amount').value = '';
     };
 
     // --- Global Add Transaction Modal ---
@@ -875,21 +916,10 @@ export async function initDashboard(user) {
     };
 
 
-    // --- Global Init ---
-    function init() {
-        // Initialize selectors to current state
-        yearSelectOverview.value = currentYear;
-        yearSelectMonth.value = currentYear;
-        document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
-
-        // Removed forced date pre-filling to respect user choice (leave empty/default)
-
-        renderMonthData(currentYear, currentMonth);
-        renderYearlyStats();
-        renderRecentTransactions();
-    }
-
-    init();
+    // Initial render with defaults or state
+    renderMonthData(currentYear, currentMonth);
+    renderYearlyStats();
+    renderRecentTransactions();
 
     // Export delete function
     window.deleteTransaction = async function (id) {
