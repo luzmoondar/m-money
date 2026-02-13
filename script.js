@@ -793,19 +793,13 @@ export async function initDashboard(user) {
                 return;
             }
 
-            let date = document.getElementById('qa-date').value;
+            const date = document.getElementById('qa-date').value;
             const desc = document.getElementById('qa-desc').value;
             const amountStr = document.getElementById('qa-amount').value;
             const amount = parseInt(amountStr);
 
-            // Fallback for date if empty
-            if (!date) {
-                const now = new Date();
-                date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            }
-
-            if (!amount || isNaN(amount)) {
-                alert('금액을 입력해주세요.');
+            if (!date || !amount || isNaN(amount)) {
+                alert('날짜와 금액을 모두 입력해주세요.');
                 return;
             }
 
@@ -824,7 +818,7 @@ export async function initDashboard(user) {
                 date: date,
                 type: type,
                 category: currentCategoryModal,
-                amount: parseInt(amount),
+                amount: amount,
                 desc: desc || ''
             };
 
@@ -837,6 +831,9 @@ export async function initDashboard(user) {
 
             transactionData.push(newTx);
 
+            // Success alert
+            alert('저장되었습니다!');
+
             // Re-render UI
             renderDetailModal(currentCategoryModal);
             renderMonthData(currentYear, currentMonth);
@@ -847,7 +844,15 @@ export async function initDashboard(user) {
             document.getElementById('qa-desc').value = '';
             document.getElementById('qa-amount').value = '';
 
-            console.log("Quick Add Successful");
+            // Check for month mismatch
+            const dParts = date.split('-');
+            if (dParts.length >= 2) {
+                const txYear = parseInt(dParts[0]);
+                const txMonth = parseInt(dParts[1]);
+                if (txYear !== currentYear || txMonth !== currentMonth) {
+                    alert(`알림: ${txYear}년 ${txMonth}월 내역으로 저장되었습니다.\n(현재 화면은 ${currentYear}년 ${currentMonth}월입니다)`);
+                }
+            }
 
         } catch (err) {
             console.error("Quick add failed unexpectedly:", err);
