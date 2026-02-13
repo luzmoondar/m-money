@@ -157,6 +157,7 @@ export async function initDashboard(user) {
                 }
 
                 const newTx = {
+                    id: Date.now(),
                     user_id: user.id,
                     date: date,
                     type: type,
@@ -166,24 +167,18 @@ export async function initDashboard(user) {
                 };
 
                 console.log("[QuickAdd] Attempting Supabase insert...", newTx);
-                const { data: insertRes, error } = await supabase.from('transactions').insert(newTx).select();
+                const { error } = await supabase.from('transactions').insert(newTx);
 
                 if (error) {
                     console.error("[QuickAdd] Insert ERROR:", error);
+                    alert(`저장 실패: ${error.message || '데이터베이스 오류'}`);
                     throw error;
                 }
 
-                console.log("[QuickAdd] Insert SUCCESS! Response:", insertRes);
+                console.log("[QuickAdd] Insert SUCCESS!");
 
-                // Add to local data (with the ID returned from DB)
-                if (insertRes && insertRes[0]) {
-                    newTx.id = insertRes[0].id;
-                    transactionData.push(newTx);
-                } else {
-                    // Fallback if select failing but insert worked
-                    newTx.id = Date.now();
-                    transactionData.push(newTx);
-                }
+                // Add to local data
+                transactionData.push(newTx);
 
                 alert('저장되었습니다!');
 
@@ -337,9 +332,14 @@ export async function initDashboard(user) {
             if (txResult.status === 'fulfilled' && !txResult.value.error) {
                 const txData = txResult.value.data;
                 console.log(`[Dashboard] ${txData?.length || 0} Transactions synced.`);
-                if (txData) transactionData = txData;
+                if (txData && txData.length > 0) {
+                    console.table(txData.slice(0, 10));
+                    transactionData = txData;
+                } else if (txData) {
+                    transactionData = []; // Truly empty
+                }
             } else {
-                console.warn("[Dashboard] Transaction sync failed or timed out.");
+                console.warn("[Dashboard] Transaction sync failed or timed out. Keeping current data.");
             }
 
             // Always render what we have
