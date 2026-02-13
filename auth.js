@@ -23,8 +23,16 @@ let isDashboardInitialized = false;
 // Event Listeners
 // ----------------------------
 
-function setupAuth() {
+async function setupAuth() {
     console.log("Setting up Auth Listeners");
+
+    // Check session on load
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        showDashboard(session.user);
+    } else {
+        showAuth();
+    }
 
     // Switch to Signup
     if (btnShowSignup) {
