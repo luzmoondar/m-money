@@ -166,8 +166,15 @@ export async function initDashboard(user) {
                     desc: desc || ''
                 };
 
-                const { error } = await supabase.from('transactions').insert(newTx);
-                if (error) throw error;
+                console.log("[QuickAdd] Attempting Supabase insert...", newTx);
+                const { data: insertRes, error } = await supabase.from('transactions').insert(newTx).select();
+
+                if (error) {
+                    console.error("[QuickAdd] Insert ERROR:", error);
+                    throw error;
+                }
+
+                console.log("[QuickAdd] Insert SUCCESS! Response:", insertRes);
 
                 transactionData.push(newTx);
                 alert('저장되었습니다!');
@@ -278,10 +285,10 @@ export async function initDashboard(user) {
     // ----------------------------
     // Fetch Data from Supabase (Async)
     // ----------------------------
-    console.log("[Dashboard] Starting data fetch from Supabase...");
+    console.log("[Dashboard] Starting data fetch for user.id:", user.id);
 
-    // Helper for timeout
-    const withTimeout = (promise, ms = 5000) => {
+    // Helper for timeout (increased to 8s for slow networks)
+    const withTimeout = (promise, ms = 8000) => {
         return Promise.race([
             promise,
             new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms))
@@ -352,6 +359,7 @@ export async function initDashboard(user) {
 
         if (txData) {
             console.log(`[Dashboard] Fetched ${txData.length} transactions.`);
+            if (txData.length > 0) console.table(txData.slice(0, 10)); // Top 10 for debug
             transactionData = txData;
         }
 
