@@ -62,10 +62,12 @@ export function initDashboard(user) {
 
     // 1. Calculate and Render Monthly Stats + Category Breakdown
     function renderMonthData(year, month) {
-        // Filter data for this month
+        // Filter data for this month - use string slicing for robustness
         const monthlyItems = transactionData.filter(t => {
-            const d = new Date(t.date);
-            return d.getFullYear() === year && (d.getMonth() + 1) === month;
+            if (!t.date) return false;
+            const tYear = parseInt(t.date.split('-')[0]);
+            const tMonth = parseInt(t.date.split('-')[1]);
+            return tYear === Number(year) && tMonth === Number(month);
         });
 
         // Totals
@@ -438,9 +440,9 @@ export function initDashboard(user) {
     // 4. Render Yearly Stats (Overall)
     function renderYearlyStats() {
         const yearlyItems = transactionData.filter(t => {
-            const d = new Date(t.date);
-            // Ensure both are treated as numbers for comparison
-            return Number(d.getFullYear()) === Number(currentYear);
+            if (!t.date) return false;
+            const tYear = parseInt(t.date.split('-')[0]);
+            return tYear === Number(currentYear);
         });
 
         let income = 0;
@@ -744,12 +746,7 @@ export function initDashboard(user) {
         document.getElementById('qa-desc').value = '';
         document.getElementById('qa-amount').value = '';
 
-        // Reset date to today after add
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        document.getElementById('qa-date').value = `${yyyy}-${mm}-${dd}`;
+        // No longer resetting date to today; keep user's last selected date
     };
 
     // --- Global Add Transaction Modal ---
@@ -821,7 +818,7 @@ export function initDashboard(user) {
         // Sync UI with current date
         yearSelectOverview.value = currentYear;
         yearSelectMonth.value = currentYear;
-        // Initialize date pickers to today
+        // Initialize date pickers to today ONLY IF they are empty
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -829,10 +826,10 @@ export function initDashboard(user) {
         const formattedDate = `${yyyy}-${mm}-${dd}`;
 
         const qaDate = document.getElementById('qa-date');
-        if (qaDate) qaDate.value = formattedDate;
+        if (qaDate && !qaDate.value) qaDate.value = formattedDate;
 
         const mainFormDate = formTransaction.querySelector('input[type="date"]');
-        if (mainFormDate) mainFormDate.value = formattedDate;
+        if (mainFormDate && !mainFormDate.value) mainFormDate.value = formattedDate;
 
         renderMonthData(currentYear, currentMonth);
         renderYearlyStats();
