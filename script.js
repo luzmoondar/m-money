@@ -62,11 +62,15 @@ export function initDashboard(user) {
 
     // 1. Calculate and Render Monthly Stats + Category Breakdown
     function renderMonthData(year, month) {
-        // Filter data for this month - use string slicing for robustness
+        // Robust filtering: handles -, /, and varying string formats
         const monthlyItems = transactionData.filter(t => {
             if (!t.date) return false;
-            const tYear = parseInt(t.date.split('-')[0]);
-            const tMonth = parseInt(t.date.split('-')[1]);
+            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            if (parts.length < 2) return false;
+
+            const tYear = parseInt(parts[0]);
+            const tMonth = parseInt(parts[1]);
+
             return tYear === Number(year) && tMonth === Number(month);
         });
 
@@ -397,12 +401,18 @@ export function initDashboard(user) {
         const catName = getCategoryName(category);
         modalTitle.textContent = `${catName} 상세 내역`;
 
-        // Filter by category AND current month to match summary cards
+        // Robust filtering for detail modal
         const items = transactionData.filter(t => {
-            const d = new Date(t.date);
+            if (!t.date) return false;
+            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            if (parts.length < 2) return false;
+
+            const tYear = parseInt(parts[0]);
+            const tMonth = parseInt(parts[1]);
+
             return t.category === category &&
-                d.getFullYear() === currentYear &&
-                (d.getMonth() + 1) === currentMonth;
+                tYear === Number(currentYear) &&
+                tMonth === Number(currentMonth);
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         tbody.innerHTML = '';
@@ -441,7 +451,8 @@ export function initDashboard(user) {
     function renderYearlyStats() {
         const yearlyItems = transactionData.filter(t => {
             if (!t.date) return false;
-            const tYear = parseInt(t.date.split('-')[0]);
+            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            const tYear = parseInt(parts[0]);
             return tYear === Number(currentYear);
         });
 
@@ -818,7 +829,9 @@ export function initDashboard(user) {
         // Sync UI with current date
         yearSelectOverview.value = currentYear;
         yearSelectMonth.value = currentYear;
-        // Initialize date pickers to today ONLY IF they are empty
+        document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
+
+        // Initialize date pickers ONLY IF they are empty
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
