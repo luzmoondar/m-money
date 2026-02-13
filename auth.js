@@ -19,27 +19,22 @@ let isDashboardInitialized = false;
 // ----------------------------
 
 async function setupAuth() {
-    console.log("Setting up Auth Listeners");
+    console.log("[Auth] Setting up Auth Listeners");
+    console.group("Auth Initialization");
 
-    // Check session on load
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        await showDashboard(session.user);
-    } else {
-        showAuth();
-    }
+    // ----------------------------
+    // Independent UI Listeners (Attach FIRST for responsiveness)
+    // ----------------------------
 
     // Switch to Signup
     if (btnShowSignup) {
         btnShowSignup.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent any default action
+            e.preventDefault();
             console.log("Switching to Signup");
             loginForm.classList.remove('active');
             signupForm.classList.add('active');
             clearMessage();
         });
-    } else {
-        console.error("Signup button not found");
     }
 
     // Switch to Login
@@ -51,59 +46,35 @@ async function setupAuth() {
             loginForm.classList.add('active');
             clearMessage();
         });
-    } else {
-        console.error("Login button not found");
     }
 
-    // Handle Login
+    // Handle Login Submit
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-
             showMessage('로그인 중...', 'neutral');
-
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            })
-
-            if (error) {
-                showMessage(`로그인 실패: ${error.message}`, 'error');
-            } else {
-                showMessage('로그인 성공!', 'success');
-                // Auth state change will handle transition
-            }
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) showMessage(`로그인 실패: ${error.message}`, 'error');
+            else showMessage('로그인 성공!', 'success');
         });
     }
 
-    // Handle Signup
+    // Handle Signup Submit
     if (signupForm) {
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const nickname = document.getElementById('signup-nickname').value;
-
             showMessage('회원가입 중...', 'neutral');
-
-            const { data, error } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        display_name: nickname,
-                    }
-                }
-            })
-
-            if (error) {
-                showMessage(`가입 실패: ${error.message}`, 'error');
-            } else {
-                showMessage('가입 성공! 자동 로그인됩니다.', 'success');
-                // Auth state change will handle transition if auto-confirm is on
-            }
+            const { error } = await supabase.auth.signUp({
+                email, password,
+                options: { data: { display_name: nickname } }
+            });
+            if (error) showMessage(`가입 실패: ${error.message}`, 'error');
+            else showMessage('가입 성공! 자동 로그인됩니다.', 'success');
         });
     }
 
@@ -111,7 +82,7 @@ async function setupAuth() {
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
             await supabase.auth.signOut();
-            window.location.reload(); // Reload to clear state
+            window.location.reload();
         });
     }
 
@@ -133,10 +104,9 @@ async function setupAuth() {
         });
     }
 
-    // Handle Profile Update
+    // Handle Profile Update Form
     const profileForm = document.getElementById('profile-form');
     if (profileForm) {
-        // Preview handling
         const uploadInput = document.getElementById('profile-upload');
         const previewImg = document.getElementById('profile-img-tag');
         const previewContainer = document.getElementById('profile-preview');
@@ -145,8 +115,8 @@ async function setupAuth() {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    previewImg.src = e.target.result;
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
                     previewImg.style.display = 'block';
                     previewContainer.classList.add('has-image');
                 };
@@ -162,83 +132,79 @@ async function setupAuth() {
             try {
                 submitBtn.disabled = true;
                 submitBtn.textContent = '저장 중...';
-
                 const newName = document.getElementById('profile-nickname').value.trim();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Refresh needed');
 
-                // Get current user
-                const { data: { user }, error: userError } = await supabase.auth.getUser();
-                if (userError || !user) {
-                    throw new Error('사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
-                }
-
-                // Handle Image Save
                 const file = uploadInput.files[0];
                 let avatarUrl = null;
-
                 if (file) {
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
                     await new Promise(resolve => reader.onload = resolve);
                     avatarUrl = reader.result;
-                }
-
-                let finalUser = user;
-
-                // Only update nickname if a new one is provided.
-                if (newName && newName !== user.user_metadata.display_name) {
-                    const { data, error } = await supabase.auth.updateUser({
-                        data: { display_name: newName }
-                    });
-                    if (error) throw error;
-                    finalUser = data.user;
-                }
-
-                // Save avatar URL to localStorage
-                if (avatarUrl) {
                     localStorage.setItem(`avatar_${user.id}`, avatarUrl);
                 }
 
-                alert('프로필이 수정되었습니다.');
+                let finalUser = user;
+                if (newName) {
+                    const { data } = await supabase.auth.updateUser({ data: { display_name: newName } });
+                    finalUser = data.user;
+                }
 
-                // Success actions
+                alert('프로필이 수정되었습니다.');
                 document.getElementById('profile-modal-overlay').classList.remove('active');
                 profileForm.reset();
                 if (previewContainer) previewContainer.classList.remove('has-image');
                 if (previewImg) previewImg.style.display = 'none';
-
-                // Refresh Dashboard with potentially updated user data
                 await showDashboard(finalUser);
-
             } catch (err) {
-                console.error("Profile update error:", err);
-                alert('프로필 수정 중 오류가 발생했습니다: ' + err.message);
+                console.error(err);
+                alert('수정 실패: ' + err.message);
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
             }
         });
     }
+
+    // ----------------------------
+    // Async Balance: Check session on load (At the end)
+    // ----------------------------
+    try {
+        console.log("[Auth] Checking initial session...");
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session) {
+            console.log("[Auth] Active session found for:", session.user.email);
+            await showDashboard(session.user);
+        } else {
+            console.log("[Auth] No active session, showing login view.");
+            showAuth();
+        }
+    } catch (err) {
+        console.error("[Auth] Session check failed:", err.message);
+        showAuth();
+    } finally {
+        console.groupEnd();
+    }
 }
 
-// Ensure DOM is ready (though module sort of guarantees it)
+// Initialization Logic
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setupAuth);
 } else {
     setupAuth();
 }
 
-// ----------------------------
-// Auth State Management
-// ----------------------------
-
 supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth Event:", event, session);
-
+    console.log("[Auth] State Change Event:", event);
     if (session) {
-        // User is logged in
+        console.log("[Auth] Session active, updating dashboard...");
         await showDashboard(session.user);
     } else {
-        // User is logged out
+        console.log("[Auth] No session, showing auth...");
         showAuth();
     }
 });
@@ -246,57 +212,53 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 // ----------------------------
 // Helper Functions
 // ----------------------------
-
 async function showDashboard(user) {
+    console.log("[Auth] Switching to Dashboard view...");
     authContainer.style.display = 'none';
     dashboardContainer.style.display = 'flex';
 
-    // Update User Profile UI
-    const displayName = user.user_metadata.display_name || user.email.split('@')[0];
-    const initial = displayName.charAt(0).toUpperCase();
+    try {
+        const displayName = user.user_metadata?.display_name || user.email.split('@')[0];
+        const initial = displayName.charAt(0).toUpperCase();
 
-    const userNameEl = document.getElementById('user-display-name');
-    const userAvatarEl = document.getElementById('user-avatar');
+        const userNameEl = document.getElementById('user-display-name');
+        const userAvatarEl = document.getElementById('user-avatar');
 
-    if (userNameEl) userNameEl.textContent = `${displayName}님`;
+        if (userNameEl) userNameEl.textContent = `${displayName}님`;
 
-    // Avatar Logic
-    const savedAvatar = localStorage.getItem(`avatar_${user.id}`);
-    if (savedAvatar && userAvatarEl) {
-        userAvatarEl.style.backgroundImage = `url(${savedAvatar})`;
-        userAvatarEl.style.backgroundSize = 'cover';
-        userAvatarEl.style.backgroundPosition = 'center';
-        userAvatarEl.textContent = ''; // Hide initial
-    } else if (userAvatarEl) {
-        userAvatarEl.textContent = initial;
-        userAvatarEl.style.backgroundImage = 'none';
-    }
+        const savedAvatar = localStorage.getItem(`avatar_${user.id}`);
+        if (savedAvatar && userAvatarEl) {
+            userAvatarEl.style.backgroundImage = `url(${savedAvatar})`;
+            userAvatarEl.style.backgroundSize = 'cover';
+            userAvatarEl.style.backgroundPosition = 'center';
+            userAvatarEl.textContent = '';
+        } else if (userAvatarEl) {
+            userAvatarEl.textContent = initial;
+            userAvatarEl.style.backgroundImage = 'none';
+        }
 
-    // Initialize Dashboard Logic (Only once)
-    if (!isDashboardInitialized) {
-        isDashboardInitialized = true;
-        await initDashboard(user);
+        if (!isDashboardInitialized) {
+            isDashboardInitialized = true;
+            console.log("[Auth] Initializing full dashboard logic...");
+            await initDashboard(user);
+        }
+    } catch (err) {
+        console.error("[Auth] Failed to show dashboard UI:", err);
     }
 }
 
 function showAuth() {
     dashboardContainer.style.display = 'none';
     authContainer.style.display = 'flex';
-    if (loginForm) {
-        loginForm.classList.add('active');
-        loginForm.reset();
-    }
-    if (signupForm) {
-        signupForm.classList.remove('active');
-        signupForm.reset();
-    }
+    if (loginForm) { loginForm.classList.add('active'); loginForm.reset(); }
+    if (signupForm) { signupForm.classList.remove('active'); signupForm.reset(); }
     clearMessage();
 }
 
 function showMessage(msg, type) {
     if (!authMessage) return;
     authMessage.textContent = msg;
-    authMessage.className = 'auth-message'; // reset
+    authMessage.className = 'auth-message';
     if (type === 'error') authMessage.classList.add('msg-error');
     if (type === 'success') authMessage.classList.add('msg-success');
 }
