@@ -408,7 +408,7 @@ body {
 /* Dashboard Grid Layout (Month View) */
 .dashboard-grid-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: var(--spacing-lg);
 }
 
@@ -420,7 +420,7 @@ body {
 
 .category-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: var(--spacing-sm);
 }
 
