@@ -439,7 +439,8 @@ export function initDashboard(user) {
     function renderYearlyStats() {
         const yearlyItems = transactionData.filter(t => {
             const d = new Date(t.date);
-            return d.getFullYear() === currentYear;
+            // Ensure both are treated as numbers for comparison
+            return Number(d.getFullYear()) === Number(currentYear);
         });
 
         let income = 0;
@@ -817,6 +818,8 @@ export function initDashboard(user) {
         yearSelectMonth.value = currentYear;
         document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
         renderMonthData(currentYear, currentMonth);
+        renderYearlyStats();
+        renderRecentTransactions();
 
         // Pre-fill quick add date
         const today = new Date();
