@@ -1,3 +1,19 @@
+const { createClient } = supabase;
+
+const SUPABASE_URL = "https://rqdwpnddynwjgekopiea.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_6g7yQMrnMAYll9cfoZGmUw_VbjeFMS4";
+
+const supabaseClient = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true
+        }
+    }
+);
+
 // ----------------------------
 // Data Model - Empty Start
 // ----------------------------
