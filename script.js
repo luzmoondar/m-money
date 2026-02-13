@@ -177,6 +177,11 @@ export function initDashboard(user) {
             // If clicking delete button or icon, do nothing (handled by their own listeners or stopped propagation)
             if (e.target.closest('.btn-delete-cat') || e.target.closest('.icon')) return;
 
+            // Reset fields on fresh open from card click
+            document.getElementById('qa-date').value = '';
+            document.getElementById('qa-desc').value = '';
+            document.getElementById('qa-amount').value = '';
+
             renderDetailModal(cat.id);
             document.getElementById('detail-modal-overlay').classList.add('active');
         };
@@ -402,11 +407,6 @@ export function initDashboard(user) {
         const catName = getCategoryName(category);
         modalTitle.textContent = `${catName} 상세 내역`;
 
-        // Reset Quick Add fields every time modal opens
-        document.getElementById('qa-date').value = '';
-        document.getElementById('qa-desc').value = '';
-        document.getElementById('qa-amount').value = '';
-
         // Robust filtering for detail modal
         const items = transactionData.filter(t => {
             if (!t.date) return false;
@@ -435,7 +435,10 @@ export function initDashboard(user) {
         items.forEach(t => {
             total += t.amount;
 
-            const className = t.type === 'expense' ? 'amount negative' : 'amount positive';
+            // Determine specific color class for detail table
+            let className = 'amount positive'; // Default (Income/Savings)
+            if (t.type === 'expense') className = 'amount negative';
+            else if (t.type === 'savings') className = 'amount savings';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -658,6 +661,11 @@ export function initDashboard(user) {
     document.addEventListener('click', (e) => {
         const incomeCard = e.target.closest('#card-income');
         if (incomeCard) {
+            // Reset fields on fresh open
+            document.getElementById('qa-date').value = '';
+            document.getElementById('qa-desc').value = '';
+            document.getElementById('qa-amount').value = '';
+
             renderDetailModal('income_default');
             document.getElementById('detail-modal-overlay').classList.add('active');
         }
@@ -741,11 +749,11 @@ export function initDashboard(user) {
 
         // Auto-determine type based on current category
         let type = 'expense';
-        // Case-insensitive ID check or direct inclusion check
-        if (userCategories.income.some(c => c.id === currentCategoryModal)) type = 'income';
-        else if (userCategories.savings.some(c => c.id === currentCategoryModal)) type = 'savings';
-        else if (currentCategoryModal === 'income_default') type = 'income';
-        else if (currentCategoryModal === 'savings_default') type = 'savings';
+        if (userCategories.income.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'income_default') {
+            type = 'income';
+        } else if (userCategories.savings.some(c => c.id === currentCategoryModal) || currentCategoryModal === 'savings_default') {
+            type = 'savings';
+        }
 
         const newTx = {
             id: Date.now(),
