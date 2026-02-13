@@ -281,17 +281,24 @@ export async function initDashboard(user) {
     console.log("[Dashboard] Starting data fetch from Supabase...");
     try {
         // Categories - using maybeSingle() for robustness
-        console.log("[Dashboard] Fetching user categories...");
-        const { data: catData, error: catError } = await supabase
+        console.log("[Dashboard] Fetching user categories... (Table: 'user_categories')");
+        const catRequest = supabase
             .from('user_categories')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle();
 
+        console.log("[Dashboard] Request sent, awaiting response...");
+        const { data: catData, error: catError } = await catRequest;
+
         if (catError) {
-            console.error("[Dashboard] Category fetch error:", catError);
+            console.error("[Dashboard] Category fetch error details:", catError);
+            if (catError.status === 404 || catError.code === 'PGRST116' || catError.message?.includes('not found')) {
+                alert("데이터베이스 오류: 'user_categories' 테이블을 찾을 수 없습니다. Supabase 대시보드에서 테이블 이름이 정확한지 확인해 주세요.");
+            }
             throw catError;
         }
+        console.log("[Dashboard] Category fetch response received.");
 
         if (catData) {
             console.log("[Dashboard] Existing categories found.");
@@ -313,14 +320,19 @@ export async function initDashboard(user) {
         }
 
         // Transactions
-        console.log("[Dashboard] Fetching transactions...");
-        const { data: txData, error: txError } = await supabase
+        console.log("[Dashboard] Fetching transactions... (Table: 'transactions')");
+        const txRequest = supabase
             .from('transactions')
             .select('*')
             .eq('user_id', user.id);
 
+        const { data: txData, error: txError } = await txRequest;
+
         if (txError) {
-            console.error("[Dashboard] Transaction fetch error:", txError);
+            console.error("[Dashboard] Transaction fetch error details:", txError);
+            if (txError.status === 404) {
+                alert("데이터베이스 오류: 'transactions' 테이블을 찾을 수 없습니다.");
+            }
             throw txError;
         }
 
