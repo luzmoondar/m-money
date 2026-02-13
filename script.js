@@ -402,6 +402,11 @@ export function initDashboard(user) {
         const catName = getCategoryName(category);
         modalTitle.textContent = `${catName} 상세 내역`;
 
+        // Reset Quick Add fields every time modal opens
+        document.getElementById('qa-date').value = '';
+        document.getElementById('qa-desc').value = '';
+        document.getElementById('qa-amount').value = '';
+
         // Robust filtering for detail modal
         const items = transactionData.filter(t => {
             if (!t.date) return false;
@@ -736,8 +741,11 @@ export function initDashboard(user) {
 
         // Auto-determine type based on current category
         let type = 'expense';
+        // Case-insensitive ID check or direct inclusion check
         if (userCategories.income.some(c => c.id === currentCategoryModal)) type = 'income';
         else if (userCategories.savings.some(c => c.id === currentCategoryModal)) type = 'savings';
+        else if (currentCategoryModal === 'income_default') type = 'income';
+        else if (currentCategoryModal === 'savings_default') type = 'savings';
 
         const newTx = {
             id: Date.now(),
