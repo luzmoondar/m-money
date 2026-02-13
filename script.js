@@ -31,11 +31,48 @@ let userCategories = { ...DEFAULT_CATEGORIES }; // Initial state
 // ----------------------------
 
 export async function initDashboard(user) {
-    try {
-        console.log("Dashboard Initialized for:", user.email);
+    const yearSelectOverview = document.getElementById('year-select-overview');
+    const yearSelectMonth = document.getElementById('year-select-month');
+    const pageTitle = document.getElementById('page-title');
 
-        // 1. Fetch Categories from Supabase
-        const { data: catData, error: catError } = await supabase
+    // ----------------------------
+    // Navigation & Interaction (Attach FIRST for UI responsiveness)
+    // ----------------------------
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.dashboard-section');
+
+    navItems.forEach(item => {
+        item.onclick = () => {
+            if (item.classList.contains('logout-btn')) return;
+
+            navItems.forEach(nav => {
+                if (!nav.classList.contains('logout-btn')) nav.classList.remove('active');
+            });
+            item.classList.add('active');
+
+            const tabId = item.getAttribute('data-tab');
+            sections.forEach(section => section.classList.remove('active'));
+            document.getElementById(tabId === 'overview' ? 'section-overview' : 'section-month').classList.add('active');
+
+            if (tabId === 'overview') {
+                renderYearlyStats();
+                pageTitle.style.display = 'block';
+                pageTitle.textContent = `${currentYear}년 전체 통계`;
+            } else {
+                renderMonthData(currentYear, currentMonth);
+                pageTitle.style.display = 'none';
+            }
+        };
+    });
+
+    // ----------------------------
+    // Fetch Data from Supabase
+    // ----------------------------
+    try {
+        console.log("Fetching data for:", user.email);
+
+        // Fetch Categories
+        const { data: catData } = await supabase
             .from('user_categories')
             .select('*')
             .eq('user_id', user.id)
@@ -48,33 +85,30 @@ export async function initDashboard(user) {
                 savings: catData.savings || DEFAULT_CATEGORIES.savings
             };
         } else {
-            // First timer - save defaults to DB
+            // New user: Try to insert defaults
             await supabase.from('user_categories').insert({
                 user_id: user.id,
                 expense: DEFAULT_CATEGORIES.expense,
                 income: DEFAULT_CATEGORIES.income,
                 savings: DEFAULT_CATEGORIES.savings
-            });
+            }).select(); // select() helps ensure success
             userCategories = { ...DEFAULT_CATEGORIES };
         }
 
-        // 2. Fetch Transactions from Supabase
-        const { data: txData, error: txError } = await supabase
+        // Fetch Transactions
+        const { data: txData } = await supabase
             .from('transactions')
             .select('*')
             .eq('user_id', user.id);
 
         if (txData) transactionData = txData;
-    } catch (err) {
-        console.error("Dashboard initialization failed:", err);
-        // Fallback to empty/default if DB fails so UI is still interactable
-        userCategories = { ...DEFAULT_CATEGORIES };
-    }
 
-    // Sync Selectors
-    const yearSelectOverview = document.getElementById('year-select-overview');
-    const yearSelectMonth = document.getElementById('year-select-month');
-    const pageTitle = document.getElementById('page-title');
+    } catch (err) {
+        console.error("Data fetch failed, using defaults:", err);
+        // Ensure UI stays usable
+        userCategories = { ...DEFAULT_CATEGORIES };
+        transactionData = [];
+    }
 
     // ----------------------------
     // Render Functions
@@ -595,36 +629,8 @@ export async function initDashboard(user) {
 
 
     // ----------------------------
-    // Navigation & Interaction
+    // Navigation listener already attached at start of initDashboard
     // ----------------------------
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.dashboard-section');
-
-    navItems.forEach(item => {
-        // Remove existing listener if any to avoid duplicates? (In module, code runs once, but init might be called multiple times if we had SPA nav)
-        // For simplicity, we assume init is called ONCE per hard refresh or login flow
-        item.addEventListener('click', () => {
-            if (item.classList.contains('logout-btn')) return; // Skip logout btn
-
-            navItems.forEach(nav => {
-                if (!nav.classList.contains('logout-btn')) nav.classList.remove('active');
-            });
-            item.classList.add('active');
-
-            const tabId = item.getAttribute('data-tab');
-            sections.forEach(section => section.classList.remove('active'));
-            document.getElementById(tabId === 'overview' ? 'section-overview' : 'section-month').classList.add('active');
-
-            if (tabId === 'overview') {
-                renderYearlyStats();
-                pageTitle.style.display = 'block'; // Show title
-                pageTitle.textContent = `${currentYear}년 전체 통계`;
-            } else {
-                renderMonthData(currentYear, currentMonth);
-                pageTitle.style.display = 'none'; // Hide title for Monthly view as requested
-            }
-        });
-    });
 
     // Month Navigation
     const displayMonth = document.getElementById('current-month-display');
