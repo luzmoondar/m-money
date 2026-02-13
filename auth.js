@@ -24,7 +24,7 @@ async function setupAuth() {
     // Check session on load
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-        showDashboard(session.user);
+        await showDashboard(session.user);
     } else {
         showAuth();
     }
@@ -207,7 +207,7 @@ async function setupAuth() {
                 if (previewImg) previewImg.style.display = 'none';
 
                 // Refresh Dashboard with potentially updated user data
-                showDashboard(finalUser);
+                await showDashboard(finalUser);
 
             } catch (err) {
                 console.error("Profile update error:", err);
@@ -231,12 +231,12 @@ if (document.readyState === 'loading') {
 // Auth State Management
 // ----------------------------
 
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
     console.log("Auth Event:", event, session);
 
     if (session) {
         // User is logged in
-        showDashboard(session.user);
+        await showDashboard(session.user);
     } else {
         // User is logged out
         showAuth();
@@ -247,7 +247,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Helper Functions
 // ----------------------------
 
-function showDashboard(user) {
+async function showDashboard(user) {
     authContainer.style.display = 'none';
     dashboardContainer.style.display = 'flex';
 
@@ -274,8 +274,8 @@ function showDashboard(user) {
 
     // Initialize Dashboard Logic (Only once)
     if (!isDashboardInitialized) {
-        initDashboard(user);
         isDashboardInitialized = true;
+        await initDashboard(user);
     }
 }
 

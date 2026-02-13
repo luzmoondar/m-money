@@ -1,3 +1,5 @@
+import { supabase } from "./supabase.js";
+
 // ----------------------------
 // Data Model - State
 // ----------------------------
@@ -29,39 +31,45 @@ let userCategories = { ...DEFAULT_CATEGORIES }; // Initial state
 // ----------------------------
 
 export async function initDashboard(user) {
-    console.log("Dashboard Initialized for:", user.email);
+    try {
+        console.log("Dashboard Initialized for:", user.email);
 
-    // 1. Fetch Categories from Supabase
-    const { data: catData, error: catError } = await supabase
-        .from('user_categories')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+        // 1. Fetch Categories from Supabase
+        const { data: catData, error: catError } = await supabase
+            .from('user_categories')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
 
-    if (catData) {
-        userCategories = {
-            expense: catData.expense || DEFAULT_CATEGORIES.expense,
-            income: catData.income || DEFAULT_CATEGORIES.income,
-            savings: catData.savings || DEFAULT_CATEGORIES.savings
-        };
-    } else {
-        // First timer - save defaults to DB
-        await supabase.from('user_categories').insert({
-            user_id: user.id,
-            expense: DEFAULT_CATEGORIES.expense,
-            income: DEFAULT_CATEGORIES.income,
-            savings: DEFAULT_CATEGORIES.savings
-        });
+        if (catData) {
+            userCategories = {
+                expense: catData.expense || DEFAULT_CATEGORIES.expense,
+                income: catData.income || DEFAULT_CATEGORIES.income,
+                savings: catData.savings || DEFAULT_CATEGORIES.savings
+            };
+        } else {
+            // First timer - save defaults to DB
+            await supabase.from('user_categories').insert({
+                user_id: user.id,
+                expense: DEFAULT_CATEGORIES.expense,
+                income: DEFAULT_CATEGORIES.income,
+                savings: DEFAULT_CATEGORIES.savings
+            });
+            userCategories = { ...DEFAULT_CATEGORIES };
+        }
+
+        // 2. Fetch Transactions from Supabase
+        const { data: txData, error: txError } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (txData) transactionData = txData;
+    } catch (err) {
+        console.error("Dashboard initialization failed:", err);
+        // Fallback to empty/default if DB fails so UI is still interactable
         userCategories = { ...DEFAULT_CATEGORIES };
     }
-
-    // 2. Fetch Transactions from Supabase
-    const { data: txData, error: txError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id);
-
-    if (txData) transactionData = txData;
 
     // Sync Selectors
     const yearSelectOverview = document.getElementById('year-select-overview');
