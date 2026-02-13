@@ -62,10 +62,11 @@ export function initDashboard(user) {
 
     // 1. Calculate and Render Monthly Stats + Category Breakdown
     function renderMonthData(year, month) {
-        // Robust filtering: handles -, /, and varying string formats
+        // Robust filtering: handles -, /, whitespace, and varying string formats
         const monthlyItems = transactionData.filter(t => {
             if (!t.date) return false;
-            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            // Split by hyphen or slash and trim
+            const parts = t.date.trim().split(/[-/]/);
             if (parts.length < 2) return false;
 
             const tYear = parseInt(parts[0]);
@@ -404,7 +405,8 @@ export function initDashboard(user) {
         // Robust filtering for detail modal
         const items = transactionData.filter(t => {
             if (!t.date) return false;
-            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            // Split by hyphen or slash and trim
+            const parts = t.date.trim().split(/[-/]/);
             if (parts.length < 2) return false;
 
             const tYear = parseInt(parts[0]);
@@ -451,7 +453,7 @@ export function initDashboard(user) {
     function renderYearlyStats() {
         const yearlyItems = transactionData.filter(t => {
             if (!t.date) return false;
-            const parts = t.date.includes('-') ? t.date.split('-') : t.date.split('/');
+            const parts = t.date.trim().split(/[-/]/);
             const tYear = parseInt(parts[0]);
             return tYear === Number(currentYear);
         });
@@ -826,23 +828,12 @@ export function initDashboard(user) {
 
     // --- Global Init ---
     function init() {
-        // Sync UI with current date
+        // Initialize selectors to current state
         yearSelectOverview.value = currentYear;
         yearSelectMonth.value = currentYear;
         document.getElementById('current-month-display').textContent = `${currentMonth} 월`;
 
-        // Initialize date pickers ONLY IF they are empty
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const formattedDate = `${yyyy}-${mm}-${dd}`;
-
-        const qaDate = document.getElementById('qa-date');
-        if (qaDate && !qaDate.value) qaDate.value = formattedDate;
-
-        const mainFormDate = formTransaction.querySelector('input[type="date"]');
-        if (mainFormDate && !mainFormDate.value) mainFormDate.value = formattedDate;
+        // Removed forced date pre-filling to respect user choice (leave empty/default)
 
         renderMonthData(currentYear, currentMonth);
         renderYearlyStats();
